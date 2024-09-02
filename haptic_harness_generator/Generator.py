@@ -3,12 +3,6 @@ import pyvista as pv
 import ezdxf
 from vtkbool.vtkBool import vtkPolyDataBooleanFilter
 
-import os
-base_dir = os.path.dirname(os.path.abspath(__file__))
-export_dir = os.path.join(base_dir, "..", "exports")
-if not os.path.exists(export_dir):
-    os.makedirs(export_dir)
-
 class Generator:
     def __init__(self):
         self.concentricPolygonRadius = 30

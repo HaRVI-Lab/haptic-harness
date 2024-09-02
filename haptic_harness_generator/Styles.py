@@ -34,7 +34,7 @@ class Styles:
             border-top-left-radius: 4px;
             border-top-right-radius: 4px;
             min-width: 8ex;
-            padding: 2px;
+            padding: 4px;
             margin-right: 5px;
         }
 
@@ -117,6 +117,36 @@ class Styles:
         }
 
         QSpinBox::down-button:pressed {
+            background-color: @lightGray;
+        }
+
+        QDoubleSpinBox{
+            padding: 7px;
+            border-radius: 5px;
+            background-color: @secondaryGray;
+        }
+
+        QDoubleSpinBox::up-button{
+            margin: 3px;
+        }
+
+        QDoubleSpinBox::down-button{
+            margin: 3px;
+        }
+
+        QDoubleSpinBox::up-button:hover {
+            background-color: @lightGray;
+        }
+
+        QDoubleSpinBox::up-button:pressed {
+            background-color: @lightGray;
+        }
+
+        QDoubleSpinBox::down-button:hover {
+            background-color: @lightGray;
+        }
+
+        QDoubleSpinBox::down-button:pressed {
             background-color: @lightGray;
         }
 

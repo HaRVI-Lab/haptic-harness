@@ -20,7 +20,6 @@ class MyMainWindow(MainWindow):
         self.generator = Generator()
 
         tabs = Qt.QTabWidget()
-        tabs.addTab(self.initInstructionsTab(), "Instructions")
         tabs.addTab(self.initTileTab(), "Generate Tiles")
         tabs.addTab(self.initPeripheralsTab(), "Generate Peripherals")
         # tabs.setFixedWidth(600)
@@ -80,7 +79,10 @@ class MyMainWindow(MainWindow):
                 r"(?<!^)(?=[A-Z])", " ", attributeKey
             ).title()
             label = QtWidgets.QLabel(formattedAttributeName)
-            spin_box = QtWidgets.QSpinBox()
+            if attributeKey == "numSides":
+                spin_box = QtWidgets.QSpinBox()
+            else:
+                spin_box = QtWidgets.QDoubleSpinBox()
             # TODO: change int qspinbox
             spin_box.setValue(int(attributeVal))
             spin_box.textChanged.connect(
@@ -159,35 +161,6 @@ class MyMainWindow(MainWindow):
         regenPeripherals.clicked.connect(self.regenPeripherals)
         tab.setLayout(layout)
 
-        return tab
-
-    def initInstructionsTab(self):
-        tab = Qt.QWidget()
-        layout = Qt.QHBoxLayout()
-        label = QtWidgets.QLabel()
-        label.setAlignment(QtCore.Qt.AlignLeft)
-        layout.addWidget(label)
-        label.setText(
-            """
-        <html>
-            <h1>How to use the haptic harness generator:</h1>
-            <p>Navigate the software by switching between the "Tile Generator", "Peripherals Generator", and "Instructions" tabs at the top of the program.</p>
-            <h3>Using the "Tile Generator" tab:</h3>
-            <ul>
-                <li>This portion of the software generates the tyvek, foam, and magnetic ring components of a haptic harness tile</li>
-                <li>The 1st quadrant displays the magnetic ring</li>
-                <li>The 2nd quadrant displays the tyvek tile</li>
-                <li>The 3rd quadrant displays the foam backing</li>
-                <li>Use the 4th quadrant to change the tile parameters</li>
-                <ul>
-                    <li>Change parameters then click the "Generate Parts" button to generate the .dxf files for each component</li>
-                </ul>
-            </ul>
-            <h3>Using the "Peripheral Generator" tab:</h3>
-        </html>
-                      """
-        )
-        tab.setLayout(layout)
         return tab
 
     def setGeneratorAttribute(self, attrName, val):
