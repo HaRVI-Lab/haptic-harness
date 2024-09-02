@@ -4,7 +4,8 @@ import ezdxf
 from vtkbool.vtkBool import vtkPolyDataBooleanFilter
 
 class Generator:
-    def __init__(self):
+    def __init__(self, userDir):
+        self.userDir = userDir
         self.concentricPolygonRadius = 30
         self.tactorRadius = 10
         self.numSides = 6
@@ -22,6 +23,7 @@ class Generator:
         self.distanceBetweenMagnetClipAndPolygonEdge = 3
         self.distanceBetweenMagnetClipAndSlot = 3
         self.foamThickness = 1
+
 
     def customSetAttr(self, attrName, val):
         print(attrName)
@@ -201,7 +203,7 @@ class Generator:
                 pvVerts.append((v1[0].item(), v1[1].item(), 0))
                 pvVerts.append((v2[0].item(), v2[1].item(), 0))
                 pvLines.append((2, offset, offset + 1))
-        doc.saveas("exports/tyvekTile.dxf")
+        doc.saveas(f"{self.userDir}/tyvekTile.dxf")
 
         mesh = pv.PolyData()
         mesh.points = pvVerts
@@ -235,7 +237,7 @@ class Generator:
         msp = doc.modelspace()
         pvVerts, pvLines = self.genCenter(msp)
         pvVerts, pvLines = self.genOuterPolygon(msp, pvVerts, pvLines)
-        doc.saveas("exports/foamPiece.dxf")
+        doc.saveas(f"{self.userDir}/foamPiece.dxf")
 
         mesh = pv.PolyData()
         mesh.points = pvVerts
@@ -274,7 +276,7 @@ class Generator:
         pvVerts, pvLines = self.genCenter(msp)
         pvVerts, pvLines = self.genOuterPolygon(msp, pvVerts, pvLines)
         pvVerts, pvLines = genMagnetHoles(msp, pvVerts, pvLines)
-        doc.saveas("exports/magnetRing.dxf")
+        doc.saveas(f"{self.userDir}/magnetRing.dxf")
 
         mesh = pv.PolyData()
         mesh.points = pvVerts
@@ -420,7 +422,7 @@ class Generator:
         )
         if not finalMesh.is_manifold:
             raise Exception("The mesh must be manifold")
-        finalMesh.save("exports/base.stl")
+        finalMesh.save(f"{self.userDir}/base.stl")
         return finalMesh
 
     def generateBottomMagnetConnector(self, origin: np.array):
@@ -542,7 +544,7 @@ class Generator:
             )
         if not base.is_manifold:
             raise Exception("Mesh is not manifold")
-        base.save("exports/bottomClip.stl")
+        base.save(f"{self.userDir}/bottomClip.stl")
         return base
 
     def generateTopClip(self):
@@ -748,7 +750,7 @@ class Generator:
         )
         if not base.is_manifold:
             raise Exception("Mesh is not manifold")
-        base.save("exports/topClip.stl")
+        base.save(f"{self.userDir}/topClip.stl")
         return base
 
 

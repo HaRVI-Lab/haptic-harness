@@ -8,21 +8,20 @@ import re
 
 class MyMainWindow(MainWindow):
 
-    def __init__(self, parent=None, show=True):
+    def __init__(self, userDir, parent=None, show=True):
         QtWidgets.QMainWindow.__init__(self, parent)
 
         styleSheet = Styles()
-        app.setStyleSheet(styleSheet.getStyles())
+        super().setStyleSheet(styleSheet.getStyles())
         self.interactorColor = styleSheet.colors["green"]
         primaryLayout = Qt.QHBoxLayout()
         self.frame = QtWidgets.QFrame()
         self.plotters = []
-        self.generator = Generator()
+        self.generator = Generator(userDir)
 
         tabs = Qt.QTabWidget()
         tabs.addTab(self.initTileTab(), "Generate Tiles")
         tabs.addTab(self.initPeripheralsTab(), "Generate Peripherals")
-        # tabs.setFixedWidth(600)
         primaryLayout.addWidget(tabs)
 
         # self.setCentralWidget(self.frame)
@@ -74,6 +73,8 @@ class MyMainWindow(MainWindow):
 
         attributes = self.generator.__dict__
         for attributeKey, attributeVal in attributes.items():
+            if attributeKey == "userDir":
+                continue
             hbox = QtWidgets.QHBoxLayout()
             formattedAttributeName = re.sub(
                 r"(?<!^)(?=[A-Z])", " ", attributeKey
@@ -81,10 +82,10 @@ class MyMainWindow(MainWindow):
             label = QtWidgets.QLabel(formattedAttributeName)
             if attributeKey == "numSides":
                 spin_box = QtWidgets.QSpinBox()
+                spin_box.setValue(int(attributeVal))
             else:
                 spin_box = QtWidgets.QDoubleSpinBox()
-            # TODO: change int qspinbox
-            spin_box.setValue(int(attributeVal))
+                spin_box.setValue(float(attributeVal))
             spin_box.textChanged.connect(
                 lambda value, attributeKey=attributeKey: self.setGeneratorAttribute(
                     attributeKey, value
@@ -204,8 +205,3 @@ class MyMainWindow(MainWindow):
         self.plotters[5].add_mesh(
             self.generator.generateTopClip(), color=self.interactorColor
         )
-
-
-app = QtWidgets.QApplication(sys.argv)
-window = MyMainWindow()
-sys.exit(app.exec_())

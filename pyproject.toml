@@ -2,9 +2,12 @@
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = ["haptic_harness_generator"]
+
 [project]
 name = "haptic_harness_generator"
-version = "0.0.20"
+version = "0.0.23"
 authors = [{ name = "kaleFruit" }]
 description = "Software to easily generate parameterized tiles for haptic harnesses"
 readme = "README.md"
