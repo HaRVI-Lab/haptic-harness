@@ -31,7 +31,9 @@ Setting up a new Conda environment through the ternminal with the correct depend
 2. In the "Generaet Tiles" tab, click "Generate Parts" to generate the .dxf files
 3. In the "Generate Peripherals" tab, click "Generate Parts" to generate the .stl files
 4. Generated files can be found in the "exports" directory
-![Alt text](images/anatomyOfTile.png)
+<div style = "display: flex; justify-content: center;">
+    <img src = "images/anatomyOfTile.jpg" alt = "Diagram view" width="75%">
+</div>
 
 ## Hardware Operation
 ### Materials
@@ -44,7 +46,9 @@ Setting up a new Conda environment through the ternminal with the correct depend
     -   .dxf files to be cut on a laser cutter
     -   .stl files to be 3D-printed
 -   A tile is constructed by supergluing the cut parts as shown below: 
-![Alt text](images/hexagonExploded.jpg)
+<div style = "display: flex; justify-content: center;">
+    <img src = "images/diagramOne.jpg" alt = "Diagram view" width="50%">
+</div>
 
 ## Dependencies:
 
