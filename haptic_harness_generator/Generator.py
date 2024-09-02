@@ -3,6 +3,7 @@ import pyvista as pv
 import ezdxf
 from vtkbool.vtkBool import vtkPolyDataBooleanFilter
 
+
 class Generator:
     def __init__(self, userDir):
         self.userDir = userDir
@@ -23,7 +24,6 @@ class Generator:
         self.distanceBetweenMagnetClipAndPolygonEdge = 3
         self.distanceBetweenMagnetClipAndSlot = 3
         self.foamThickness = 1
-
 
     def customSetAttr(self, attrName, val):
         print(attrName)
@@ -314,10 +314,42 @@ class Generator:
         mesh = pv.PolyData(totalVerts, totalFaces)
         return mesh
 
+    def polygonalPrismSlanted(self, radiusBottom, radiusTop, res, height, origin):
+        totalVerts = []
+        totalFaces = []
+        thetaInterval = 2 * np.pi / res
+        for i in range(res):
+            totalVerts.append(
+                (
+                    radiusBottom * np.cos(thetaInterval * i) + origin[0],
+                    radiusBottom * np.sin(thetaInterval * i) + origin[1],
+                    -height / 2 + origin[2],
+                )
+            )
+        for i in range(res):
+            totalVerts.append(
+                (
+                    radiusTop * np.cos(thetaInterval * i) + origin[0],
+                    radiusTop * np.sin(thetaInterval * i) + origin[1],
+                    height / 2 + origin[2],
+                )
+            )
+        for i in range(res):
+            totalFaces.append((3, i, (i + 1) % res, i + res))
+            totalFaces.append((3, i + res, (i + 1) % res + res, (i + 1) % res))
+        totalVerts.append((origin[0], origin[1], -height / 2 + origin[2]))
+        totalVerts.append((origin[0], origin[1], height / 2 + origin[2]))
+        for i in range(res):
+            totalFaces.append((3, i, len(totalVerts) - 2, (i + 1) % res))
+            totalFaces.append((3, i + res, len(totalVerts) - 1, (i + 1) % res + res))
+        mesh = pv.PolyData(totalVerts, totalFaces)
+        return mesh
+
     def generateBase(self):
         prismHeight = 10
-        prism = self.polygonalPrism(
-            radius=self.tactorRadius,
+        prism = self.polygonalPrismSlanted(
+            radiusBottom=self.tactorRadius,
+            radiusTop=self.tactorRadius * 0.8,
             res=6,
             height=prismHeight,
             origin=(0, 0, self.magnetThickness / 2 + 1 + prismHeight / 2),

@@ -1,6 +1,11 @@
 # Haptic Harness Toolkit Generator
 
 A software to easily generate parameterized tiles for haptic harnesses
+<div style = "display: flex; gap: 3%; justify-content: center;">
+ <img src = "images/hexagonExploded.jpg" alt = "Exploded view of hexagonal tile" width="30%">
+ <img src = "images/flatView.jpg" alt = "Flat view of tile" width="30%">
+ <img src = "images/squareExploded.jpg" alt = "Exploded view of square tile" width="30%">
+</div>
 
 ## Description
 
@@ -16,8 +21,8 @@ Setting up a new Conda environment through the ternminal with the correct depend
 3. Install VTKBool with: `conda install -c conda-forge vtkbool` (ensure conda-forge is in your conda config)
 4. Install ezdxf with: `pip install haptic_harness_generator`
 5. Run the program from your cli with: 
-   1. `run-haptic-harness --export-dir [your absolute path]`
-   2. Ex. `run-haptic-harness --export-dir C:\Users\Me\Downloads` 
+   -   `run-haptic-harness --export-dir [your absolute path]`
+   -   Ex. (for Windows) `run-haptic-harness --export-dir C:\Users\Me\Downloads` 
 
 
 ## Software Operation
@@ -27,6 +32,19 @@ Setting up a new Conda environment through the ternminal with the correct depend
 3. In the "Generate Peripherals" tab, click "Generate Parts" to generate the .stl files
 4. Generated files can be found in the "exports" directory
 ![Alt text](images/anatomyOfTile.png)
+
+## Hardware Operation
+### Materials
+- Tyvek: will be cut for the tiles
+- EVA foam: will be cut for the liner
+- Hardboard (or comparable material): will be cut for the magnet ring
+- Hard 3D printable material (ex. PLA): will be print for peripheral items
+### Tile Assembly
+-   After files are generated, they will be exported as:
+    -   .dxf files to be cut on a laser cutter
+    -   .stl files to be 3D-printed
+-   A tile is constructed by supergluing the cut parts as shown below: 
+![Alt text](images/hexagonExploded.jpg)
 
 ## Dependencies:
 
