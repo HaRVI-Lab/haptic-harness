@@ -21,7 +21,7 @@ Setting up a new Conda environment through the ternminal with the correct depend
 2. In the "Generaet Tiles" tab, click "Generate Parts" to generate the .dxf files
 3. In the "Generate Peripherals" tab, Click "Generate Parts" to generate the .stl files
 4. Generated files can be found in the "exports" directory
-
+![Alt text](anatomyOfTile.png)
 ## Dependencies:
 
 -   Pyvista

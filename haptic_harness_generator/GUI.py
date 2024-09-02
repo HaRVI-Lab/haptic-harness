@@ -13,7 +13,7 @@ class MyMainWindow(MainWindow):
 
         styleSheet = Styles()
         app.setStyleSheet(styleSheet.getStyles())
-
+        self.interactorColor = styleSheet.colors["green"]
         primaryLayout = Qt.QHBoxLayout()
         self.frame = QtWidgets.QFrame()
         self.plotters = []
@@ -37,9 +37,8 @@ class MyMainWindow(MainWindow):
 
     def initTileTab(self):
         tab = Qt.QWidget()
-        grid_layout = QtWidgets.QGridLayout()
+        interactors_layout = QtWidgets.QHBoxLayout()
         labels = ["Tyvek Tile", "Foam Liner", "Magnetic Ring"]
-        positions = [(0, 0), (0, 1), (1, 0)]
         for i in range(3):
             section = QtWidgets.QVBoxLayout()
             self.plotters.append(QtInteractor(self.frame))
@@ -50,16 +49,25 @@ class MyMainWindow(MainWindow):
             frame = Qt.QFrame(objectName="sectionFrame")
             frame.setFrameShape(Qt.QFrame.StyledPanel)
             frame.setLayout(section)
-            grid_layout.addWidget(frame, positions[i][0], positions[i][1])
+            interactors_layout.addWidget(frame)
 
         self.plotters[0].add_mesh(
-            self.generator.generateTyvekTile(), show_edges=True, line_width=3
+            self.generator.generateTyvekTile(),
+            show_edges=True,
+            line_width=3,
+            color=self.interactorColor,
         )
         self.plotters[1].add_mesh(
-            self.generator.generateFoam(), show_edges=True, line_width=3
+            self.generator.generateFoam(),
+            show_edges=True,
+            line_width=3,
+            color=self.interactorColor,
         )
         self.plotters[2].add_mesh(
-            self.generator.generateMagnetRing(), show_edges=True, line_width=3
+            self.generator.generateMagnetRing(),
+            show_edges=True,
+            line_width=3,
+            color=self.interactorColor,
         )
 
         self.entryBox = QtWidgets.QWidget()
@@ -89,10 +97,13 @@ class MyMainWindow(MainWindow):
         regen.clicked.connect(self.regen)
 
         self.entryBox.setLayout(vbox)
-
-        grid_layout.addWidget(self.entryBox, 1, 1)
-        tab.setLayout(grid_layout)
-
+        hbox_layout = QtWidgets.QHBoxLayout()
+        hbox_layout.addWidget(self.entryBox)
+        frame = Qt.QFrame(objectName="sectionFrame")
+        frame.setFrameShape(Qt.QFrame.StyledPanel)
+        frame.setLayout(interactors_layout)
+        hbox_layout.addWidget(frame)
+        tab.setLayout(hbox_layout)
         return tab
 
     def initPeripheralsTab(self):
@@ -110,7 +121,9 @@ class MyMainWindow(MainWindow):
         frame.setFrameShape(Qt.QFrame.StyledPanel)
         frame.setLayout(section)
         plotLayout.addWidget(frame)
-        self.plotters[3].add_mesh(self.generator.generateBase(), color="green")
+        self.plotters[3].add_mesh(
+            self.generator.generateBase(), color=self.interactorColor
+        )
 
         section = QtWidgets.QVBoxLayout()
         self.plotters.append(QtInteractor(self.frame))
@@ -122,7 +135,9 @@ class MyMainWindow(MainWindow):
         frame.setFrameShape(Qt.QFrame.StyledPanel)
         frame.setLayout(section)
         plotLayout.addWidget(frame)
-        self.plotters[4].add_mesh(self.generator.generateBottomClip(), color="green")
+        self.plotters[4].add_mesh(
+            self.generator.generateBottomClip(), color=self.interactorColor
+        )
 
         section = QtWidgets.QVBoxLayout()
         self.plotters.append(QtInteractor(self.frame))
@@ -134,7 +149,9 @@ class MyMainWindow(MainWindow):
         frame.setFrameShape(Qt.QFrame.StyledPanel)
         frame.setLayout(section)
         plotLayout.addWidget(frame)
-        self.plotters[5].add_mesh(self.generator.generateTopClip(), color="green")
+        self.plotters[5].add_mesh(
+            self.generator.generateTopClip(), color=self.interactorColor
+        )
 
         layout.addLayout(plotLayout)
         regenPeripherals = QtWidgets.QPushButton("Generate Parts")
@@ -179,26 +196,41 @@ class MyMainWindow(MainWindow):
     def regen(self):
         self.plotters[0].clear_actors()
         self.plotters[0].add_mesh(
-            self.generator.generateTyvekTile(), show_edges=True, line_width=3
+            self.generator.generateTyvekTile(),
+            show_edges=True,
+            line_width=3,
+            color=self.interactorColor,
         )
         self.plotters[1].clear_actors()
         self.plotters[1].add_mesh(
-            self.generator.generateFoam(), show_edges=True, line_width=3
+            self.generator.generateFoam(),
+            show_edges=True,
+            line_width=3,
+            color=self.interactorColor,
         )
         self.plotters[2].clear_actors()
         self.plotters[2].add_mesh(
-            self.generator.generateMagnetRing(), show_edges=True, line_width=3
+            self.generator.generateMagnetRing(),
+            show_edges=True,
+            line_width=3,
+            color=self.interactorColor,
         )
 
     def regenPeripherals(self):
         self.plotters[3].clear_actors()
-        self.plotters[3].add_mesh(self.generator.generateBase(), color="green")
+        self.plotters[3].add_mesh(
+            self.generator.generateBase(), color=self.interactorColor
+        )
 
         self.plotters[4].clear_actors()
-        self.plotters[4].add_mesh(self.generator.generateBottomClip(), color="green")
+        self.plotters[4].add_mesh(
+            self.generator.generateBottomClip(), color=self.interactorColor
+        )
 
         self.plotters[5].clear_actors()
-        self.plotters[5].add_mesh(self.generator.generateTopClip(), color="green")
+        self.plotters[5].add_mesh(
+            self.generator.generateTopClip(), color=self.interactorColor
+        )
 
 
 app = QtWidgets.QApplication(sys.argv)
