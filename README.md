@@ -1,11 +1,11 @@
 # Haptic Harness Toolkit Generator
 
 A software to easily generate parameterized tiles for haptic harnesses
-<div style = "display: flex; gap: 3%; justify-content: center;">
+<p align="center">
  <img src = "images/hexagonExploded.jpg" alt = "Exploded view of hexagonal tile" width="30%">
  <img src = "images/flatView.jpg" alt = "Flat view of tile" width="30%">
  <img src = "images/squareExploded.jpg" alt = "Exploded view of square tile" width="30%">
-</div>
+</p>
 
 ## Description
 
@@ -31,9 +31,10 @@ Setting up a new Conda environment through the ternminal with the correct depend
 2. In the "Generaet Tiles" tab, click "Generate Parts" to generate the .dxf files
 3. In the "Generate Peripherals" tab, click "Generate Parts" to generate the .stl files
 4. Generated files can be found in the "exports" directory
-<div style = "display: flex; justify-content: center;">
-    <img src = "images/anatomyOfTile.jpg" alt = "Diagram view" width="75%">
-</div>
+<p align= "center">
+    <img src = "images/anatomyOfTile.jpg" alt = "Diagram view" width="76%">
+</p>
+
 
 ## Hardware Operation
 ### Materials
@@ -46,9 +47,9 @@ Setting up a new Conda environment through the ternminal with the correct depend
     -   .dxf files to be cut on a laser cutter
     -   .stl files to be 3D-printed
 -   A tile is constructed by supergluing the cut parts as shown below: 
-<div style = "display: flex; justify-content: center;">
+<p align="center">
     <img src = "images/diagramOne.jpg" alt = "Diagram view" width="50%">
-</div>
+</p>
 
 ## Dependencies:
 
