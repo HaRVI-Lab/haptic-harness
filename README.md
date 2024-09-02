@@ -18,6 +18,7 @@ Setting up a new Conda environment through the ternminal with the correct depend
 
 1. Create a new conda environment with Python 3.9 using: `conda create -n hapticHarnessGenerator python=3.9`
 2. Run: `conda activate hapticHarnessGenerator`
+   -    vtkbool is only availabe on win64, linux64, and osx64. Therefore, if vtkbool is not found in your environment, hapticHarnessGenerator defaults to pyvista's native boolean operation suite
 3. Install VTKBool with: `conda install -c conda-forge vtkbool` (ensure conda-forge is in your conda config)
 4. Install ezdxf with: `pip install haptic_harness_generator`
 5. Run the program from your cli with: 
@@ -44,7 +45,7 @@ Setting up a new Conda environment through the ternminal with the correct depend
 - Hard 3D printable material (ex. PLA): will be print for peripheral items
 ### Tile Assembly
 -   After files are generated, they will be exported as:
-    -   .dxf files to be cut on a laser cutter
+    -   .dxf files to be cut on a laser cutter (.dxf files can be converetd online or in software like Adobe Illustrator)
     -   .stl files to be 3D-printed
 -   A tile is constructed by supergluing the cut parts as shown below: 
 <p align="center">

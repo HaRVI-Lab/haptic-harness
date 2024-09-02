@@ -1,6 +1,7 @@
 import numpy as np
 import pyvista as pv
 import ezdxf
+
 from vtkbool.vtkBool import vtkPolyDataBooleanFilter
 
 
@@ -25,8 +26,30 @@ class Generator:
         self.distanceBetweenMagnetClipAndSlot = 3
         self.foamThickness = 1
 
+    def booleanOp(self, obj1, obj2, opType):
+        if not obj1.is_manifold and not obj2.is_manifold:
+            raise Exception("Both meshes must be manifold before a boolean operation")
+        boolean = vtkPolyDataBooleanFilter()
+        boolean.SetInputData(0, obj1)
+        boolean.SetInputData(1, obj2)
+        if opType == "difference":
+            boolean.SetOperModeToDifference()
+        elif opType == "union":
+            boolean.SetOperModeToUnion()
+        else:
+            raise Exception("Operation type must be specified")
+        boolean.Update()
+        result = (
+            pv.wrap(boolean.GetOutput())
+            .triangulate()
+            .clean()
+            .compute_normals(consistent_normals=True, auto_orient_normals=True)
+        )
+        if not result.is_manifold:
+            raise Exception("The resulting mesh is not manifold")
+        return result
+
     def customSetAttr(self, attrName, val):
-        print(attrName)
         if attrName == "numSides":
             setattr(self, attrName, int(val))
         else:
@@ -381,32 +404,9 @@ class Generator:
                 .subdivide(nsub=1)
                 .compute_normals()
             )
-            boolean = vtkPolyDataBooleanFilter()
-            boolean.SetInputData(0, base)
-            boolean.SetInputData(1, magnetHole)
-            boolean.SetOperModeToDifference()
-            boolean.Update()
-            base = (
-                pv.wrap(boolean.GetOutput())
-                .triangulate()
-                .clean()
-                .compute_normals(consistent_normals=True, auto_orient_normals=True)
-            )
 
-        boolean = vtkPolyDataBooleanFilter()
-        boolean.SetInputData(0, base)
-        boolean.SetInputData(1, prism)
-        boolean.SetOperModeToUnion()
-        boolean.Update()
-        bottomBase = (
-            pv.wrap(boolean.GetOutput())
-            .triangulate()
-            .clean()
-            .compute_normals(consistent_normals=True, auto_orient_normals=True)
-        )
-        if not bottomBase.is_manifold:
-            raise Exception("The mesh must be manifold")
-
+            base = self.booleanOp(base, magnetHole, "difference")
+        bottomBase = self.booleanOp(base, prism, "union")
         # Add foam recess
         outerBase = (
             self.polygonalPrism(
@@ -428,32 +428,8 @@ class Generator:
             .subdivide(nsub=3)
             .compute_normals()
         )
-
-        boolean = vtkPolyDataBooleanFilter()
-        boolean.SetInputData(0, outerBase)
-        boolean.SetInputData(1, foamCavity)
-        boolean.SetOperModeToDifference()
-        boolean.Update()
-        outerBaseWithHole = (
-            pv.wrap(boolean.GetOutput())
-            .triangulate()
-            .clean()
-            .compute_normals(consistent_normals=True, auto_orient_normals=True)
-        )
-
-        boolean = vtkPolyDataBooleanFilter()
-        boolean.SetInputData(0, outerBaseWithHole)
-        boolean.SetInputData(1, bottomBase)
-        boolean.SetOperModeToUnion()
-        boolean.Update()
-        finalMesh = (
-            pv.wrap(boolean.GetOutput())
-            .triangulate()
-            .clean()
-            .compute_normals(consistent_normals=True, auto_orient_normals=True)
-        )
-        if not finalMesh.is_manifold:
-            raise Exception("The mesh must be manifold")
+        outerBaseWithHole = self.booleanOp(outerBase, foamCavity, "difference")
+        finalMesh = self.booleanOp(outerBaseWithHole, bottomBase, "union")
         finalMesh.save(f"{self.userDir}/base.stl")
         return finalMesh
 
@@ -552,30 +528,9 @@ class Generator:
                 .subdivide(nsub=1)
                 .compute_normals()
             )
-            boolean = vtkPolyDataBooleanFilter()
-            boolean.SetInputData(0, outerMagnet)
-            boolean.SetInputData(1, magnet)
-            boolean.SetOperModeToDifference()
-            boolean.Update()
-            magnetHolder = (
-                pv.wrap(boolean.GetOutput())
-                .triangulate()
-                .clean()
-                .compute_normals(consistent_normals=True, auto_orient_normals=True)
-            )
-            boolean = vtkPolyDataBooleanFilter()
-            boolean.SetInputData(0, base)
-            boolean.SetInputData(1, magnetHolder)
-            boolean.SetOperModeToUnion()
-            boolean.Update()
-            base = (
-                pv.wrap(boolean.GetOutput())
-                .triangulate()
-                .clean()
-                .compute_normals(consistent_normals=True, auto_orient_normals=True)
-            )
-        if not base.is_manifold:
-            raise Exception("Mesh is not manifold")
+
+            magnetHolder = self.booleanOp(outerMagnet, magnet, "difference")
+            base = self.booleanOp(base, magnetHolder, "union")
         base.save(f"{self.userDir}/bottomClip.stl")
         return base
 
@@ -689,17 +644,8 @@ class Generator:
                 height=self.magnetThickness,
                 origin=magnetOrigin,
             ).compute_normals(consistent_normals=True, auto_orient_normals=True)
-            boolean = vtkPolyDataBooleanFilter()
-            boolean.SetInputData(0, base)
-            boolean.SetInputData(1, magnetHolder)
-            boolean.SetOperModeToDifference()
-            boolean.Update()
-            base = (
-                pv.wrap(boolean.GetOutput())
-                .triangulate()
-                .clean()
-                .compute_normals(consistent_normals=True, auto_orient_normals=True)
-            )
+
+            base = self.booleanOp(base, magnetHolder, "difference")
 
             magnetOrigin = np.array(
                 (
@@ -716,17 +662,8 @@ class Generator:
                 height=self.magnetThickness,
                 origin=magnetOrigin,
             ).compute_normals(consistent_normals=True, auto_orient_normals=True)
-            boolean = vtkPolyDataBooleanFilter()
-            boolean.SetInputData(0, base)
-            boolean.SetInputData(1, magnet)
-            boolean.SetOperModeToDifference()
-            boolean.Update()
-            base = (
-                pv.wrap(boolean.GetOutput())
-                .triangulate()
-                .clean()
-                .compute_normals(consistent_normals=True, auto_orient_normals=True)
-            )
+
+            base = self.booleanOp(base, magnet, "difference")
 
         # Create slot
         slotOrigin = np.array(
@@ -769,19 +706,7 @@ class Generator:
             consistent_normals=True, auto_orient_normals=True
         )
 
-        boolean = vtkPolyDataBooleanFilter()
-        boolean.SetInputData(0, base)
-        boolean.SetInputData(1, slot)
-        boolean.SetOperModeToDifference()
-        boolean.Update()
-        base = (
-            pv.wrap(boolean.GetOutput())
-            .triangulate()
-            .clean()
-            .compute_normals(consistent_normals=True, auto_orient_normals=True)
-        )
-        if not base.is_manifold:
-            raise Exception("Mesh is not manifold")
+        base = self.booleanOp(base, slot, "difference")
         base.save(f"{self.userDir}/topClip.stl")
         return base
 
