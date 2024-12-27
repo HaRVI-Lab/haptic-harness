@@ -1,1 +1,1 @@
-recursive-include images *
+include images/*
