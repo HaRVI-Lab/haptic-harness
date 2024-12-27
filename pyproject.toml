@@ -10,7 +10,7 @@ name = "haptic_harness_generator"
 version = "0.0.26"
 authors = [{ name = "kaleFruit" }]
 description = "Software to easily generate parameterized tiles for haptic harnesses"
-readme = "README.md"
+readme = "READMEPY.md"
 requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
