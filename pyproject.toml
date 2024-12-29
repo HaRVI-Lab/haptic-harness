@@ -7,7 +7,7 @@ packages = ["haptic_harness_generator"]
 
 [project]
 name = "haptic_harness_generator"
-version = "0.0.28"
+version = "0.0.299"
 authors = [{ name = "kaleFruit" }]
 description = "Software to easily generate parameterized tiles for haptic harnesses"
 readme = "READMEPY.md"

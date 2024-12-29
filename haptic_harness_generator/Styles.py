@@ -21,30 +21,6 @@ class Styles:
             background-color: @secondaryGray;
         }
 
-        QTabWidget::pane { /* The tab widget frame */
-            border-top: 1px solid @borderGray;
-        }
-
-        QTabBar {
-            background-color: @secondaryGray;
-        }
-
-        QTabBar::tab {
-            background-color: @gray;
-            border-top-left-radius: 4px;
-            border-top-right-radius: 4px;
-            min-width: 8ex;
-            padding: 4px;
-            margin-right: 5px;
-        }
-
-        QTabBar::tab:selected, QTabBar::tab:hover {
-            background: @lightGray;
-        }
-
-        QTabBar::tab:selected {
-            border-color: @borderGray; 
-        }
 
         QLabel {
             font-size: 16px; 
@@ -71,7 +47,7 @@ class Styles:
         QPushButton {
             border-radius: 10px; 
             border: 1px solid @lightGray;
-            width: 250px;
+            width: 200px;
             height: 50px;
             background-color: @gray;
         }
@@ -84,70 +60,24 @@ class Styles:
             padding: 5px;
             border: 1px solid @borderGray;
             border-radius: 5px;
+            width: 200px;
         }
 
         #sectionHeader{
             font-size: 20px;
         }
 
-        QSpinBox{
-            padding: 7px;
-            border-radius: 5px;
-            background-color: @secondaryGray;
+        QScrollBar {
+            background : @gray;
         }
 
-        QSpinBox::up-button{
-            margin: 3px;
+        QScrollBar::handle {
+            background : @gray;
+            border: 1px solid @borderGray;
         }
-
-        QSpinBox::down-button{
-            margin: 3px;
-        }
-
-        QSpinBox::up-button:hover {
-            background-color: @lightGray;
-        }
-
-        QSpinBox::up-button:pressed {
-            background-color: @lightGray;
-        }
-
-        QSpinBox::down-button:hover {
-            background-color: @lightGray;
-        }
-
-        QSpinBox::down-button:pressed {
-            background-color: @lightGray;
-        }
-
-        QDoubleSpinBox{
-            padding: 7px;
-            border-radius: 5px;
-            background-color: @secondaryGray;
-        }
-
-        QDoubleSpinBox::up-button{
-            margin: 3px;
-        }
-
-        QDoubleSpinBox::down-button{
-            margin: 3px;
-        }
-
-        QDoubleSpinBox::up-button:hover {
-            background-color: @lightGray;
-        }
-
-        QDoubleSpinBox::up-button:pressed {
-            background-color: @lightGray;
-        }
-
-        QDoubleSpinBox::down-button:hover {
-            background-color: @lightGray;
-        }
-
-        QDoubleSpinBox::down-button:pressed {
-            background-color: @lightGray;
+        
+        QScrollBar::handle::pressed {
+            background : @lightGray;
         }
 
         #sectionFrame {

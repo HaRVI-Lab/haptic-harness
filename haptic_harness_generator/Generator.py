@@ -1,6 +1,7 @@
 import numpy as np
 import pyvista as pv
 import ezdxf
+import numpy as np
 
 from vtkbool.vtkBool import vtkPolyDataBooleanFilter
 
@@ -25,6 +26,61 @@ class Generator:
         self.distanceBetweenMagnetClipAndPolygonEdge = 3
         self.distanceBetweenMagnetClipAndSlot = 3
         self.foamThickness = 1
+
+    def validate(self):
+        messages = []
+        tolerance = 1
+
+        if self.numSides < 2 or self.numSides > 8:
+            messages.append("numSides must be between 2 and 8 inclusive")
+
+        for attr, val in vars(self).items():
+            if attr != "userDir" and val == 0:
+                messages.append(f"{attr} must be non-zero")
+
+        if self.tactorRadius >= self.concentricPolygonRadius:
+            messages.append(
+                "The tactorRadius and concentricPolygonRadius are incompatible"
+            )
+        if self.distanceBetweenMagnetsInClip < 2 * self.magnetRadius + tolerance:
+            messages.append(
+                "The distanceBetweenMagnetsInClip and magnetRadius are incompatible"
+            )
+        maxTactorRadius = self.tactorRadius / (np.cos(np.pi / self.numSides))
+        if maxTactorRadius + tolerance > self.magnetRingRadius - self.magnetRadius:
+            messages.append(
+                "The tactorRadius, magnetRadius, and magnetRingRadius are incompatible"
+            )
+        if (
+            self.concentricPolygonRadius
+            < self.magnetRingRadius + self.magnetRadius + tolerance
+        ):
+            messages.append(
+                "The concentricPolygonRadius, magnetRadius, and magnetRingRadius are incompatible"
+            )
+        concentricPolygonEdge = self.concentricPolygonRadius * np.tan(
+            np.pi / self.numSides
+        )
+
+        if (
+            concentricPolygonEdge
+            < 4 * self.magnetRadius + 2 * tolerance + self.distanceBetweenMagnetsInClip
+        ):
+            messages.append("The polygon's edge is too short for the magnetRadius")
+
+        if self.distanceBetweenMagnetsInClip < tolerance:
+            messages.append(
+                f"The distanceBetweenMagnetsInClip is less than the minimum tolerance, {tolerance}"
+            )
+        if self.distanceBetweenMagnetClipAndSlot < tolerance:
+            messages.append(
+                f"The distanceBetweenMagnetClipAndSlot is less than the minimum tolerance, {tolerance}"
+            )
+        if self.distanceBetweenMagnetClipAndPolygonEdge < tolerance:
+            messages.append(
+                f"The distanceBetweenMagnetClipAndPolygonEdge is less than the minimum tolerance, {tolerance}"
+            )
+        return messages
 
     def booleanOp(self, obj1, obj2, opType):
         if not obj1.is_manifold and not obj2.is_manifold:

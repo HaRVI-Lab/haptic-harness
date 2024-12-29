@@ -1,6 +1,5 @@
 from pyvistaqt import QtInteractor, MainWindow
-from PyQt5 import QtCore, QtWidgets, Qt
-import sys
+from PyQt5 import QtCore, QtWidgets, Qt, QtGui
 from .Styles import Styles
 from .Generator import Generator
 import re
@@ -18,13 +17,19 @@ class MyMainWindow(MainWindow):
         self.frame = QtWidgets.QFrame()
         self.plotters = []
         self.generator = Generator(userDir)
+        self.dataValidationCheckBox = QtWidgets.QCheckBox("Data Validation", self)
+        self.dataValidationCheckBox.setChecked(True)
+        self.dataValidationCheckBox.clicked.connect(self.setDataValidation)
 
-        tabs = Qt.QTabWidget()
-        tabs.addTab(self.initTileTab(), "Generate Tiles")
-        tabs.addTab(self.initPeripheralsTab(), "Generate Peripherals")
-        primaryLayout.addWidget(tabs)
+        hbox = QtWidgets.QHBoxLayout()
 
-        # self.setCentralWidget(self.frame)
+        hbox.addWidget(self.paramtersPane())
+
+        vbox = QtWidgets.QVBoxLayout()
+        vbox.addWidget(self.initTilePane())
+        vbox.addWidget(self.initPeripheralsPane())
+        hbox.addLayout(vbox)
+        primaryLayout.addLayout(hbox)
 
         centralWidget = Qt.QWidget(objectName="totalBackground")
         centralWidget.setLayout(primaryLayout)
@@ -33,8 +38,69 @@ class MyMainWindow(MainWindow):
         if show:
             self.show()
 
-    def initTileTab(self):
-        tab = Qt.QWidget()
+    def paramtersPane(self):
+        self.entryBox = QtWidgets.QScrollArea()
+        scroll = QtWidgets.QWidget()
+
+        vbox = QtWidgets.QVBoxLayout()
+        vbox.setContentsMargins(20, 20, 40, 20)
+
+        vbox.addWidget(self.dataValidationCheckBox)
+
+        attributes = self.generator.__dict__
+        for attributeKey, attributeVal in attributes.items():
+            if attributeKey == "userDir":
+                continue
+            hbox = QtWidgets.QHBoxLayout()
+            formattedAttributeName = re.sub(
+                r"(?<!^)(?=[A-Z])", " ", attributeKey
+            ).title()
+            label = QtWidgets.QLabel(formattedAttributeName)
+            if attributeKey == "numSides" or attributeKey == "numMagnetsInRing":
+                le = QtWidgets.QLineEdit()
+                le.setValidator(
+                    QtGui.QRegularExpressionValidator(
+                        QtCore.QRegularExpression("^\d+$")
+                    )
+                )
+                le.setText(str(attributeVal))
+            else:
+                le = QtWidgets.QLineEdit()
+                le.setValidator(
+                    QtGui.QRegularExpressionValidator(
+                        QtCore.QRegularExpression("^\d+(\.\d+)?$")
+                    )
+                )
+                le.setText(str(attributeVal))
+            le.textChanged.connect(
+                lambda value, attributeKey=attributeKey: self.setGeneratorAttribute(
+                    attributeKey, value
+                )
+            )
+            hbox.addWidget(label)
+            hbox.addWidget(le)
+            vbox.addLayout(hbox)
+
+        regen = QtWidgets.QPushButton("Generate Parts")
+        vbox.addWidget(regen)
+        label = QtWidgets.QLabel(self)
+        pixmap = QtGui.QPixmap("haptic_harness_generator/anatomyOfTile.jpg")
+        scaled_pixmap = pixmap.scaledToWidth(
+            self.entryBox.width(), mode=QtCore.Qt.SmoothTransformation
+        )
+        label.setPixmap(scaled_pixmap)
+        vbox.addWidget(label)
+        regen.clicked.connect(self.regenParts)
+
+        scroll.setLayout(vbox)
+        self.entryBox.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.entryBox.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.entryBox.setWidgetResizable(True)
+        self.entryBox.setWidget(scroll)
+        self.entryBox.setFixedWidth(scroll.width())
+        return self.entryBox
+
+    def initTilePane(self):
         interactors_layout = QtWidgets.QHBoxLayout()
         labels = ["Tyvek Tile", "Foam Liner", "Magnetic Ring"]
         for i in range(3):
@@ -68,50 +134,12 @@ class MyMainWindow(MainWindow):
             color=self.interactorColor,
         )
 
-        self.entryBox = QtWidgets.QWidget()
-        vbox = QtWidgets.QVBoxLayout()
-
-        attributes = self.generator.__dict__
-        for attributeKey, attributeVal in attributes.items():
-            if attributeKey == "userDir":
-                continue
-            hbox = QtWidgets.QHBoxLayout()
-            formattedAttributeName = re.sub(
-                r"(?<!^)(?=[A-Z])", " ", attributeKey
-            ).title()
-            label = QtWidgets.QLabel(formattedAttributeName)
-            if attributeKey == "numSides":
-                spin_box = QtWidgets.QSpinBox()
-                spin_box.setValue(int(attributeVal))
-            else:
-                spin_box = QtWidgets.QDoubleSpinBox()
-                spin_box.setValue(float(attributeVal))
-            spin_box.textChanged.connect(
-                lambda value, attributeKey=attributeKey: self.setGeneratorAttribute(
-                    attributeKey, value
-                )
-            )
-            hbox.addWidget(label)
-            hbox.addWidget(spin_box)
-            vbox.addLayout(hbox)
-
-        regen = QtWidgets.QPushButton("Generate Parts")
-        vbox.addWidget(regen)
-        regen.clicked.connect(self.regen)
-
-        self.entryBox.setLayout(vbox)
-        hbox_layout = QtWidgets.QHBoxLayout()
-        hbox_layout.addWidget(self.entryBox)
         frame = Qt.QFrame(objectName="sectionFrame")
         frame.setFrameShape(Qt.QFrame.StyledPanel)
         frame.setLayout(interactors_layout)
-        hbox_layout.addWidget(frame)
-        tab.setLayout(hbox_layout)
-        return tab
+        return frame
 
-    def initPeripheralsTab(self):
-        tab = Qt.QWidget()
-        layout = Qt.QVBoxLayout()
+    def initPeripheralsPane(self):
         plotLayout = Qt.QHBoxLayout()
 
         section = QtWidgets.QVBoxLayout()
@@ -156,16 +184,45 @@ class MyMainWindow(MainWindow):
             self.generator.generateTopClip(), color=self.interactorColor
         )
 
-        layout.addLayout(plotLayout)
-        regenPeripherals = QtWidgets.QPushButton("Generate Parts")
-        layout.addWidget(regenPeripherals)
-        regenPeripherals.clicked.connect(self.regenPeripherals)
-        tab.setLayout(layout)
-
-        return tab
+        frame = Qt.QFrame(objectName="sectionFrame")
+        frame.setFrameShape(Qt.QFrame.StyledPanel)
+        frame.setLayout(plotLayout)
+        return frame
 
     def setGeneratorAttribute(self, attrName, val):
         self.generator.customSetAttr(attrName=attrName, val=val)
+
+    def setDataValidation(self, state):
+        if not self.dataValidationCheckBox.isChecked():
+            msg = QtWidgets.QMessageBox()
+            msg.setIcon(QtWidgets.QMessageBox.Critical)
+            msg.setText(
+                "Turning off data validation may lead to incompatible geometry, which may crash the program"
+            )
+            msg.setWindowTitle("Validation Error")
+            msg.setStandardButtons(
+                QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel
+            )
+            retval = msg.exec_()
+            if retval == QtWidgets.QMessageBox.Ok:
+                self.dataValidationCheckBox.setChecked(False)
+            elif retval == QtWidgets.QMessageBox.Cancel:
+                self.dataValidationCheckBox.setChecked(True)
+
+    def regenParts(self):
+        messages = []
+        if self.dataValidationCheckBox.isChecked():
+            messages = self.generator.validate()
+        if len(messages) == 0:
+            self.regen()
+            self.regenPeripherals()
+        else:
+            msg = QtWidgets.QMessageBox()
+            msg.setIcon(QtWidgets.QMessageBox.Critical)
+            msg.setText("\n\n".join(messages))
+            msg.setWindowTitle("Validation Error")
+            msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            retval = msg.exec_()
 
     def regen(self):
         self.plotters[0].clear_actors()
