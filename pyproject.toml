@@ -17,7 +17,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["numpy", "pyvista>=0.43.6", "ezdxf", "PyQt5", "pyvistaqt"]
+dependencies = ["numpy", "pyvista>=0.43.6", "ezdxf", "PyQt5", "pyvistaqt", "PyQtWebEngine"]
 
 [project.scripts]
 run-haptic-harness = "haptic_harness_generator:run_app"

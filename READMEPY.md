@@ -49,8 +49,11 @@ Setting up a new Conda environment through the ternminal with the correct depend
 -   After files are generated, they will be exported as:
     -   .dxf files to be cut on a laser cutter (.dxf files can be converetd online or in software like Adobe Illustrator)
     -   .stl files to be 3D-printed
--   A tile is constructed by supergluing the cut parts as shown below :: 
-![](haptic_harness_generator-0.0.299/images/anatomyOfTile.jpg)
+-   A tile is constructed by supergluing the cut parts as shown below: 
+<p align="center">
+    ![](https://github.com/HaRVI-Lab/haptic-harness/raw/main/images/diagramOne.jpg)
+</p>
+
 ## Dependencies:
 
 -   Pyvista

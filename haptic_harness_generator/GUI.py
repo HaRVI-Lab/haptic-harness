@@ -1,8 +1,12 @@
 from pyvistaqt import QtInteractor, MainWindow
-from PyQt5 import QtCore, QtWidgets, Qt, QtGui
+from PyQt5 import QtCore, QtWidgets, Qt, QtGui, QtWebEngineWidgets
 from .Styles import Styles
 from .Generator import Generator
 import re
+import os
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+instructions_file_path = os.path.join(current_dir, "instructions.html")
 
 
 class MyMainWindow(MainWindow):
@@ -21,15 +25,19 @@ class MyMainWindow(MainWindow):
         self.dataValidationCheckBox.setChecked(True)
         self.dataValidationCheckBox.clicked.connect(self.setDataValidation)
 
+        tab = Qt.QWidget()
         hbox = QtWidgets.QHBoxLayout()
-
         hbox.addWidget(self.paramtersPane())
-
         vbox = QtWidgets.QVBoxLayout()
         vbox.addWidget(self.initTilePane())
         vbox.addWidget(self.initPeripheralsPane())
         hbox.addLayout(vbox)
-        primaryLayout.addLayout(hbox)
+        tab.setLayout(hbox)
+
+        tabs = Qt.QTabWidget()
+        tabs.addTab(tab, "Generate Tiles")
+        tabs.addTab(self.initInstructions(), "Instructions")
+        primaryLayout.addWidget(tabs)
 
         centralWidget = Qt.QWidget(objectName="totalBackground")
         centralWidget.setLayout(primaryLayout)
@@ -37,6 +45,12 @@ class MyMainWindow(MainWindow):
 
         if show:
             self.show()
+
+    def initInstructions(self):
+        view = QtWebEngineWidgets.QWebEngineView()
+        with open(instructions_file_path, "r") as instructions_file:
+            view.setHtml(instructions_file.read())
+        return view
 
     def paramtersPane(self):
         self.entryBox = QtWidgets.QScrollArea()

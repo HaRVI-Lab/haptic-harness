@@ -62,6 +62,30 @@ class Styles:
             border-radius: 5px;
             width: 200px;
         }
+        QTabWidget::pane { /* The tab widget frame */
+            border-top: 1px solid @borderGray;
+        }
+
+        QTabBar {
+            background-color: @secondaryGray;
+        }
+
+        QTabBar::tab {
+            background-color: @gray;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+            min-width: 8ex;
+            padding: 4px;
+            margin-right: 5px;
+        }
+
+        QTabBar::tab:selected, QTabBar::tab:hover {
+            background: @lightGray;
+        }
+
+        QTabBar::tab:selected {
+            border-color: @borderGray; 
+        }
 
         #sectionHeader{
             font-size: 20px;
