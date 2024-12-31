@@ -5,68 +5,61 @@
 
 <h2>Description</h2>
 <ul>
-    <li>This software allows researchers to create an easy haptic harness by generating a tile solution</li>
-    <li>Researchers can change harness parameters to meet their needs</li>
+<li>This software allows researchers to create an easy haptic harness by generating a tile solution</li>
+<li>Researchers can change harness parameters to meet their needs</li>
 </ul>
 <h2>Getting Started</h2>
 <p>Setting up a new Conda environment through the ternminal with the correct dependencies:</p>
 <ol>
-    <li>Create a new conda environment with Python 3.9 using: <code>conda create -n hapticHarnessGenerator
-            python=3.9</code>
-        <blockquote>
-            <p>[!WARNING]<br />
-                vtkbool through conda-forge is only availabe on win64, linux64, and osx64. Please see:
-                https://github.com/zippy84/vtkbool<br />
-                Therefore, please select the correct platform for the conda environment like this example for mac:
-                <code>conda create -n hapticHarnessGenerator python=3.9 --platform osx-64</code>
-            </p>
-        </blockquote>
-    </li>
-    <li>Run: <code>conda activate hapticHarnessGenerator</code></li>
-    <li>Install VTKBool with: <code>conda install -c conda-forge vtkbool</code> (ensure conda-forge is in your conda
-        config)</li>
-    <li>Install ezdxf with: <code>pip install haptic_harness_generator</code></li>
-    <li>Run the program from your cli with: </li>
-    <li><code>run-haptic-harness --export-dir [your absolute path]</code></li>
-    <li>Ex. (for Windows) <code>run-haptic-harness --export-dir C:\Users\Me\Downloads</code> </li>
+<li>Create a new conda environment with Python 3.9 using: <code>conda create -n hapticHarnessGenerator python=3.9</code><blockquote>
+<p>[!WARNING]<br />
+vtkbool through conda-forge is only availabe on win64, linux64, and osx64. Please see: https://github.com/zippy84/vtkbool<br />
+Therefore, please select the correct platform for the conda environment like this example for mac: <code>conda create -n hapticHarnessGenerator python=3.9 --platform osx-64</code></p>
+</blockquote>
+</li>
+<li>Run: <code>conda activate hapticHarnessGenerator</code></li>
+<li>Install VTKBool with: <code>conda install -c conda-forge vtkbool</code> (ensure conda-forge is in your conda config)</li>
+<li>Install ezdxf with: <code>pip install haptic_harness_generator</code></li>
+<li>Run the program from your cli with: </li>
+<li><code>run-haptic-harness --export-dir [your absolute path]</code></li>
+<li>Ex. (for Windows) <code>run-haptic-harness --export-dir C:\Users\Me\Downloads</code> </li>
 </ol>
 <h2>Software Operation</h2>
 <ol>
-    <li>Change parameters in the "Generate Tiles" tab</li>
-    <li>In the "Generaet Tiles" tab, click "Generate Parts" to generate the .dxf files</li>
-    <li>In the "Generate Peripherals" tab, click "Generate Parts" to generate the .stl files</li>
-    <li>Generated files can be found in the "exports" directory</li>
+<li>Change parameters in the "Generate Tiles" tab</li>
+<li>In the "Generaet Tiles" tab, click "Generate Parts" to generate the .dxf files</li>
+<li>In the "Generate Peripherals" tab, click "Generate Parts" to generate the .stl files</li>
+<li>Generated files can be found in the "exports" directory</li>
 </ol>
-<p align="center">
+<p align= "center">
 </p>
 
 <h2>Hardware Operation</h2>
 <h3>Materials</h3>
 <ul>
-    <li>Tyvek: will be cut for the tiles</li>
-    <li>EVA foam: will be cut for the liner</li>
-    <li>Hardboard (or comparable material): will be cut for the magnet ring</li>
-    <li>Hard 3D printable material (ex. PLA): will be print for peripheral items</li>
+<li>Tyvek: will be cut for the tiles</li>
+<li>EVA foam: will be cut for the liner</li>
+<li>Hardboard (or comparable material): will be cut for the magnet ring</li>
+<li>Hard 3D printable material (ex. PLA): will be print for peripheral items</li>
 </ul>
 <h3>Tile Assembly</h3>
 <ul>
-    <li>After files are generated, they will be exported as:<ul>
-            <li>.dxf files to be cut on a laser cutter (.dxf files can be converetd online or in software like Adobe
-                Illustrator)</li>
-            <li>.stl files to be 3D-printed</li>
-        </ul>
-    </li>
-    <li>A tile is constructed by supergluing the cut parts as shown below: </li>
+<li>After files are generated, they will be exported as:<ul>
+<li>.dxf files to be cut on a laser cutter (.dxf files can be converetd online or in software like Adobe Illustrator)</li>
+<li>.stl files to be 3D-printed</li>
+</ul>
+</li>
+<li>A tile is constructed by supergluing the cut parts as shown below: </li>
 </ul>
 <p align="center">
 </p>
 
 <h2>Dependencies:</h2>
 <ul>
-    <li>Pyvista</li>
-    <li>vtkbool</li>
-    <li>ezdxf</li>
-    <li>Numpy</li>
-    <li>PyQT5</li>
-    <li>pyvistaqt</li>
+<li>Pyvista</li>
+<li>vtkbool</li>
+<li>ezdxf</li>
+<li>Numpy</li>
+<li>PyQT5</li>
+<li>pyvistaqt</li>
 </ul>

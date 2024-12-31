@@ -119,7 +119,9 @@ class MyMainWindow(MainWindow):
         labels = ["Tyvek Tile", "Foam Liner", "Magnetic Ring"]
         for i in range(3):
             section = QtWidgets.QVBoxLayout()
-            self.plotters.append(QtInteractor(self.frame))
+            interactor = QtInteractor(self.frame)
+            interactor.disable()
+            self.plotters.append(interactor)
             label = QtWidgets.QLabel(labels[i], objectName="sectionHeader")
             label.setAlignment(QtCore.Qt.AlignCenter)
             section.addWidget(label)

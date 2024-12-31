@@ -7,7 +7,7 @@ packages = ["haptic_harness_generator"]
 
 [project]
 name = "haptic_harness_generator"
-version = "0.0.299"
+version = "0.0.31"
 authors = [{ name = "kaleFruit" }]
 description = "Software to easily generate parameterized tiles for haptic harnesses"
 readme = "READMEPY.md"
@@ -17,7 +17,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["numpy", "pyvista>=0.43.6", "ezdxf", "PyQt5", "pyvistaqt", "PyQtWebEngine"]
+dependencies = ["numpy", "pyvista>=0.43.6", "ezdxf", "PyQt5", "pyvistaqt", "PyQtWebEngine", "markdown"]
 
 [project.scripts]
 run-haptic-harness = "haptic_harness_generator:run_app"

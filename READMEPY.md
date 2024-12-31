@@ -51,7 +51,7 @@ Setting up a new Conda environment through the ternminal with the correct depend
     -   .stl files to be 3D-printed
 -   A tile is constructed by supergluing the cut parts as shown below: 
 <p align="center">
-    ![](https://github.com/HaRVI-Lab/haptic-harness/raw/main/images/diagramOne.jpg)
+    <img src = "https://github.com/HaRVI-Lab/haptic-harness/raw/main/images/diagramOne.jpg" alt = "Diagram view" width="50%">
 </p>
 
 ## Dependencies:

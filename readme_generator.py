@@ -5,7 +5,7 @@ replacements = {
     "images/flatView.jpg": "https://github.com/HaRVI-Lab/haptic-harness/raw/main/images/flatView.jpg",
     "images/squareExploded.jpg": "https://github.com/HaRVI-Lab/haptic-harness/raw/main/images/squareExploded.jpg",
     "images/anatomyOfTile.jpg": "https://github.com/HaRVI-Lab/haptic-harness/raw/main/images/anatomyOfTile.jpg",
-    '<img src = "images/diagramOne.jpg" alt = "Diagram view" width="50%">': "![](https://github.com/HaRVI-Lab/haptic-harness/raw/main/images/diagramOne.jpg)",
+    "images/diagramOne.jpg": "https://github.com/HaRVI-Lab/haptic-harness/raw/main/images/diagramOne.jpg",
 }
 
 with open("README.md", "r") as og_file:
@@ -24,7 +24,6 @@ for line in data2:
     if any(image in line for image in replacements.keys()):
         continue
     final_data += line
-print(final_data)
 with open("haptic_harness_generator/instructions.html", "w") as instructions:
     html_content = markdown.markdown(final_data)
     instructions.write(html_content)

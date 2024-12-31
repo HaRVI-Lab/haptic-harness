@@ -1,7 +1,11 @@
+from logging import currentframe
+from PyQt5.QtCore import ws
+from ezdxf.layouts import base
 import numpy as np
 import pyvista as pv
 import ezdxf
 import numpy as np
+from time import perf_counter
 
 from vtkbool.vtkBool import vtkPolyDataBooleanFilter
 
@@ -35,8 +39,8 @@ class Generator:
             messages.append("numSides must be between 2 and 8 inclusive")
 
         for attr, val in vars(self).items():
-            if attr != "userDir" and val == 0:
-                messages.append(f"{attr} must be non-zero")
+            if attr != "userDir" and (val == 0 or val == None):
+                messages.append(f"{attr} must be some non-zero value")
 
         if self.tactorRadius >= self.concentricPolygonRadius:
             messages.append(
@@ -106,12 +110,16 @@ class Generator:
         return result
 
     def customSetAttr(self, attrName, val):
-        if attrName == "numSides":
-            setattr(self, attrName, int(val))
+        if val == "":
+            setattr(self, attrName, None)
         else:
-            setattr(self, attrName, float(val))
+            if attrName == "numSides" or attrName == "numMangetsInRing":
+                setattr(self, attrName, int(val))
+            else:
+                setattr(self, attrName, float(val))
 
-    def genCenter(self, msp):
+    def genCenter2(self, msp):
+        time1 = perf_counter()
         vertices = []
         pyVistaLines = []
         pyVistaVertices = []
@@ -134,143 +142,144 @@ class Generator:
         for i in range(6):
             msp.add_line(vertices[i], vertices[(i + 1) % 6])
             pyVistaLines.append((2, i, (i + 1) % 6))
+        print(f"non-np center: {perf_counter()-time1}")
         return (pyVistaVertices, pyVistaLines)
 
-    def generateTyvekTile(self):
-        def genFlap(msp):
-            theta = np.pi * 2 / self.numSides
-            lines = []
-            # polygon side
-            polygonSideHalf = self.concentricPolygonRadius * np.tan(theta / 2)
-            lines.append(
-                (
-                    [polygonSideHalf, self.concentricPolygonRadius],
-                    [-1 * polygonSideHalf, self.concentricPolygonRadius],
-                )
+    def genTyvekTileFlap2(self):
+        theta = np.pi * 2 / self.numSides
+        lines = []
+        # polygon side
+        polygonSideHalf = self.concentricPolygonRadius * np.tan(theta / 2)
+        lines.append(
+            (
+                [polygonSideHalf, self.concentricPolygonRadius],
+                [-1 * polygonSideHalf, self.concentricPolygonRadius],
             )
+        )
 
-            # magnet clip holes
-            resolution = 30
-            yOffset = (
-                self.distanceBetweenMagnetClipAndPolygonEdge
-                + self.concentricPolygonRadius
-                + self.magnetRadius
-                + self.magnetClipThickness
+        # magnet clip holes
+        resolution = 30
+        yOffset = (
+            self.distanceBetweenMagnetClipAndPolygonEdge
+            + self.concentricPolygonRadius
+            + self.magnetRadius
+            + self.magnetClipThickness
+        )
+        for j in range(2):
+            for i in range(resolution):
+                r = self.magnetRadius + self.magnetClipThickness
+                v1 = [
+                    r * np.cos(2 * np.pi / resolution * i)
+                    + self.distanceBetweenMagnetsInClip / 2 * (-1) ** j,
+                    r * np.sin(2 * np.pi / resolution * i) + yOffset,
+                ]
+                v2 = [
+                    r * np.cos(2 * np.pi / resolution * (i + 1))
+                    + self.distanceBetweenMagnetsInClip / 2 * (-1) ** j,
+                    r * np.sin(2 * np.pi / resolution * (i + 1)) + yOffset,
+                ]
+                lines.append((v1, v2))
+
+        # slot
+        yOffset = (
+            self.distanceBetweenMagnetClipAndPolygonEdge
+            + self.concentricPolygonRadius
+            + 2 * (self.magnetRadius + self.magnetClipThickness)
+            + self.distanceBetweenMagnetClipAndSlot
+        )
+        lines.append(([-self.slotWidth / 2, yOffset], [self.slotWidth / 2, yOffset]))
+        lines.append(
+            (
+                [self.slotWidth / 2, yOffset],
+                [self.slotWidth / 2, yOffset + self.slotHeight],
             )
-            for j in range(2):
-                for i in range(resolution):
-                    r = self.magnetRadius + self.magnetClipThickness
-                    v1 = [
-                        r * np.cos(2 * np.pi / resolution * i)
-                        + self.distanceBetweenMagnetsInClip / 2 * (-1) ** j,
-                        r * np.sin(2 * np.pi / resolution * i) + yOffset,
-                    ]
-                    v2 = [
-                        r * np.cos(2 * np.pi / resolution * (i + 1))
-                        + self.distanceBetweenMagnetsInClip / 2 * (-1) ** j,
-                        r * np.sin(2 * np.pi / resolution * (i + 1)) + yOffset,
-                    ]
-                    lines.append((v1, v2))
+        )
+        lines.append(
+            (
+                [self.slotWidth / 2, yOffset + self.slotHeight],
+                [-self.slotWidth / 2, yOffset + self.slotHeight],
+            )
+        )
+        lines.append(
+            (
+                [-self.slotWidth / 2, yOffset + self.slotHeight],
+                [-self.slotWidth / 2, yOffset],
+            )
+        )
 
-            # slot
+        # outer border
+        if polygonSideHalf <= self.slotWidth / 2 + self.slotBorderRadius:
+            initTheta = np.arccos(
+                (polygonSideHalf - self.slotWidth / 2) / self.slotBorderRadius
+            )
+            resolution = 10
             yOffset = (
                 self.distanceBetweenMagnetClipAndPolygonEdge
                 + self.concentricPolygonRadius
                 + 2 * (self.magnetRadius + self.magnetClipThickness)
                 + self.distanceBetweenMagnetClipAndSlot
+                + self.slotHeight / 2
             )
-            lines.append(
-                ([-self.slotWidth / 2, yOffset], [self.slotWidth / 2, yOffset])
-            )
-            lines.append(
-                (
-                    [self.slotWidth / 2, yOffset],
-                    [self.slotWidth / 2, yOffset + self.slotHeight],
-                )
-            )
-            lines.append(
-                (
-                    [self.slotWidth / 2, yOffset + self.slotHeight],
-                    [-self.slotWidth / 2, yOffset + self.slotHeight],
-                )
-            )
-            lines.append(
-                (
-                    [-self.slotWidth / 2, yOffset + self.slotHeight],
-                    [-self.slotWidth / 2, yOffset],
-                )
-            )
-
-            # outer border
-            if polygonSideHalf <= self.slotWidth / 2 + self.slotBorderRadius:
-                initTheta = np.arccos(
-                    (polygonSideHalf - self.slotWidth / 2) / self.slotBorderRadius
-                )
-                resolution = 10
-                yOffset = (
-                    self.distanceBetweenMagnetClipAndPolygonEdge
-                    + self.concentricPolygonRadius
-                    + 2 * (self.magnetRadius + self.magnetClipThickness)
-                    + self.distanceBetweenMagnetClipAndSlot
-                    + self.slotHeight / 2
-                )
-                for j in range(2):
-                    for i in range(resolution):
-                        currTheta = (np.pi / 2 + initTheta) / resolution * i - initTheta
-                        v1 = [
-                            (-1) ** j
-                            * (
-                                self.slotBorderRadius * np.cos(currTheta)
-                                + self.slotWidth / 2
-                            ),
-                            self.slotBorderRadius * np.sin(currTheta) + yOffset,
-                        ]
-                        nextTheta = (np.pi / 2 + initTheta) / resolution * (
-                            i + 1
-                        ) - initTheta
-                        v2 = [
-                            (-1) ** j
-                            * (
-                                self.slotBorderRadius * np.cos(nextTheta)
-                                + self.slotWidth / 2
-                            ),
-                            self.slotBorderRadius * np.sin(nextTheta) + yOffset,
-                        ]
-                        lines.append((v1, v2))
-                        if i == 0:
-                            lines.append(
-                                (
-                                    [
-                                        (-1) ** j * polygonSideHalf,
-                                        self.concentricPolygonRadius,
-                                    ],
-                                    v1,
-                                )
+            for j in range(2):
+                for i in range(resolution):
+                    currTheta = (np.pi / 2 + initTheta) / resolution * i - initTheta
+                    v1 = [
+                        (-1) ** j
+                        * (
+                            self.slotBorderRadius * np.cos(currTheta)
+                            + self.slotWidth / 2
+                        ),
+                        self.slotBorderRadius * np.sin(currTheta) + yOffset,
+                    ]
+                    if i == 0:
+                        lines.append(
+                            (
+                                [
+                                    (-1) ** j * polygonSideHalf,
+                                    self.concentricPolygonRadius,
+                                ],
+                                v1,
                             )
-                lines.append(
-                    (
-                        [self.slotWidth / 2, self.slotBorderRadius + yOffset],
-                        [-self.slotWidth / 2, self.slotBorderRadius + yOffset],
-                    )
-                )
-            else:
-                yOffset = (
-                    self.distanceBetweenMagnetClipAndPolygonEdge
-                    + self.concentricPolygonRadius
-                    + 2 * (self.magnetRadius + self.magnetClipThickness)
-                    + self.distanceBetweenMagnetClipAndSlot
-                    + self.slotHeight
-                    + self.slotBorderRadius
-                )
-                lines.append(([polygonSideHalf, yOffset], [-polygonSideHalf, yOffset]))
-            return lines
+                        )
 
+                    nextTheta = (np.pi / 2 + initTheta) / resolution * (
+                        i + 1
+                    ) - initTheta
+                    v2 = [
+                        (-1) ** j
+                        * (
+                            self.slotBorderRadius * np.cos(nextTheta)
+                            + self.slotWidth / 2
+                        ),
+                        self.slotBorderRadius * np.sin(nextTheta) + yOffset,
+                    ]
+                    lines.append((v1, v2))
+            lines.append(
+                (
+                    [self.slotWidth / 2, self.slotBorderRadius + yOffset],
+                    [-self.slotWidth / 2, self.slotBorderRadius + yOffset],
+                )
+            )
+        else:
+            yOffset = (
+                self.distanceBetweenMagnetClipAndPolygonEdge
+                + self.concentricPolygonRadius
+                + 2 * (self.magnetRadius + self.magnetClipThickness)
+                + self.distanceBetweenMagnetClipAndSlot
+                + self.slotHeight
+                + self.slotBorderRadius
+            )
+            lines.append(([polygonSideHalf, yOffset], [-polygonSideHalf, yOffset]))
+        return lines
+
+    def generateTyvekTile2(self):
+        time1 = perf_counter()
         doc = ezdxf.new(dxfversion="AC1015")
         msp = doc.modelspace()
-        pvVerts, pvLines = self.genCenter(msp)
-        for i in range(self.numSides):
+        pvVerts, pvLines = self.genCenter2(msp)
+        for i in range(1):
             theta = 2 * np.pi / self.numSides * i
-            lines = genFlap(msp)
+            lines = self.genTyvekTileFlap2()
             rotationalMatrix = np.matrix(
                 [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
             )
@@ -287,9 +296,203 @@ class Generator:
         mesh = pv.PolyData()
         mesh.points = pvVerts
         mesh.lines = pvLines
+        print(f"non np: {perf_counter()-time1}")
         return mesh
 
-    def genOuterPolygon(self, msp, pvVerts, pvLines):
+    def genCenter(self, msp):
+        time1 = perf_counter()
+        vertices = []
+        pyVistaLines = [(2, i, (i + 1) % 6) for i in range(6)]
+        thetas = np.arange(6) * 2 * np.pi / 6
+        x_vals = self.tactorRadius * np.cos(thetas)
+        y_vals = self.tactorRadius * np.sin(thetas)
+        z_vals = np.zeros(6)
+        vertices = np.column_stack((x_vals, y_vals, z_vals)).tolist()
+        for i in range(6):
+            msp.add_line(vertices[i], vertices[(i + 1) % 6])
+        print(f"np center: {perf_counter()-time1}")
+        # pyVistaLines = [(2, i, (i + 1) % 6) for i in range(6)]
+        # theta = 2 * np.pi / 6
+        # vertices = [
+        #     (
+        #         self.tactorRadius * np.cos(theta * i),
+        #         self.tactorRadius * np.sin(theta * i),
+        #         0,
+        #     )
+        #     for i in range(6)
+        # ]
+        return (vertices, pyVistaLines)
+
+    def genTyvekTileFlap(self):
+        theta = np.pi * 2 / self.numSides
+
+        lines = []
+        # polygon side
+        polygonSideHalf = self.concentricPolygonRadius * np.tan(theta / 2)
+        lines.append(
+            (
+                [polygonSideHalf, self.concentricPolygonRadius],
+                [-1 * polygonSideHalf, self.concentricPolygonRadius],
+            )
+        )
+
+        # magnet clip holes
+        resolution = 30
+        yOffset = (
+            self.distanceBetweenMagnetClipAndPolygonEdge
+            + self.concentricPolygonRadius
+            + self.magnetRadius
+            + self.magnetClipThickness
+        )
+        step = 2 * np.pi / resolution
+        angles = np.arange(resolution) * step
+        r = self.magnetRadius + self.magnetClipThickness
+        base_x_vals = r * np.cos(angles)
+        y_vals = r * np.sin(angles) + yOffset
+        offset = self.distanceBetweenMagnetsInClip / 2
+        for j in range(2):
+            x_vals = base_x_vals + offset * (-1) ** j
+            v1 = np.column_stack((x_vals, y_vals))
+            v2 = np.column_stack((np.roll(x_vals, -1), np.roll(y_vals, -1)))
+            lines.extend(zip(v1, v2))
+
+        # slot
+        yOffset = (
+            self.distanceBetweenMagnetClipAndPolygonEdge
+            + self.concentricPolygonRadius
+            + 2 * (self.magnetRadius + self.magnetClipThickness)
+            + self.distanceBetweenMagnetClipAndSlot
+        )
+        lines.append(([-self.slotWidth / 2, yOffset], [self.slotWidth / 2, yOffset]))
+        lines.append(
+            (
+                [self.slotWidth / 2, yOffset],
+                [self.slotWidth / 2, yOffset + self.slotHeight],
+            )
+        )
+        lines.append(
+            (
+                [self.slotWidth / 2, yOffset + self.slotHeight],
+                [-self.slotWidth / 2, yOffset + self.slotHeight],
+            )
+        )
+        lines.append(
+            (
+                [-self.slotWidth / 2, yOffset + self.slotHeight],
+                [-self.slotWidth / 2, yOffset],
+            )
+        )
+
+        # outer border
+        if polygonSideHalf <= self.slotWidth / 2 + self.slotBorderRadius:
+            initTheta = np.arccos(
+                (polygonSideHalf - self.slotWidth / 2) / self.slotBorderRadius
+            )
+            resolution = 10
+            yOffset = (
+                self.distanceBetweenMagnetClipAndPolygonEdge
+                + self.concentricPolygonRadius
+                + 2 * (self.magnetRadius + self.magnetClipThickness)
+                + self.distanceBetweenMagnetClipAndSlot
+                + self.slotHeight / 2
+            )
+            stock = np.arange(resolution)
+            stock1 = np.arange(1, resolution + 1)
+            cur_thetas = (np.pi / 2 + initTheta) / resolution * stock - initTheta
+            next_thetas = (np.pi / 2 + initTheta) / resolution * stock1 - initTheta
+            base_x_vals_v1 = (
+                np.cos(cur_thetas) * self.slotBorderRadius + self.slotWidth / 2
+            )
+            base_x_vals_v2 = (
+                np.cos(next_thetas) * self.slotBorderRadius + self.slotWidth / 2
+            )
+            y_vals_v1 = self.slotBorderRadius * np.sin(cur_thetas) + yOffset
+            y_vals_v2 = self.slotBorderRadius * np.sin(next_thetas) + yOffset
+            init_val_x_vals = [
+                np.array(
+                    [
+                        self.slotBorderRadius * np.cos(-initTheta) + self.slotWidth / 2,
+                        self.slotBorderRadius * np.sin(-initTheta) + yOffset,
+                    ]
+                ),
+                np.array(
+                    [
+                        -1
+                        * (
+                            self.slotBorderRadius * np.cos(-initTheta)
+                            + self.slotWidth / 2
+                        ),
+                        self.slotBorderRadius * np.sin(-initTheta) + yOffset,
+                    ]
+                ),
+            ]
+            signs = np.array([1, -1])
+            for j in range(2):
+                lines.append(
+                    (
+                        [signs[j] * polygonSideHalf, self.concentricPolygonRadius],
+                        init_val_x_vals[j],
+                    )
+                )
+                x_vals_v1 = base_x_vals_v1 * signs[j]
+                x_vals_v2 = base_x_vals_v2 * signs[j]
+                v1 = np.column_stack((x_vals_v1, y_vals_v1))
+                v2 = np.column_stack((x_vals_v2, y_vals_v2))
+                lines.extend(zip(v1, v2))
+            lines.append(
+                (
+                    [self.slotWidth / 2, self.slotBorderRadius + yOffset],
+                    [-self.slotWidth / 2, self.slotBorderRadius + yOffset],
+                )
+            )
+        else:
+            yOffset = (
+                self.distanceBetweenMagnetClipAndPolygonEdge
+                + self.concentricPolygonRadius
+                + 2 * (self.magnetRadius + self.magnetClipThickness)
+                + self.distanceBetweenMagnetClipAndSlot
+                + self.slotHeight
+                + self.slotBorderRadius
+            )
+            lines.append(([polygonSideHalf, yOffset], [-polygonSideHalf, yOffset]))
+        return lines
+
+    def generateTyvekTile(self):
+        time1 = perf_counter()
+        doc = ezdxf.new(dxfversion="AC1015")
+        msp = doc.modelspace()
+        pvVerts, pvLines = self.genCenter(msp)
+        for i in range(1):
+            offset = len(pvVerts)
+            theta = 2 * np.pi / self.numSides * i
+            lines = self.genTyvekTileFlap()
+            lines = np.array(lines).reshape(-1, 2).T
+            rotationalMatrix = np.matrix(
+                np.array(
+                    [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
+                )
+            )
+            product = rotationalMatrix * lines
+            new_verts = product.T
+            zeros = np.zeros(len(new_verts)).reshape((-1, 1))
+            verts_3d = np.concatenate((new_verts, zeros), axis=1).tolist()
+            new_lines = [
+                (2, k, k + 1) for k in range(offset, len(verts_3d) + offset, 2)
+            ]
+            pvVerts.extend(verts_3d)
+            pvLines.extend(new_lines)
+            for k in range(0, len(verts_3d), 2):
+                msp.add_line(new_verts[k].tolist()[0], new_verts[k + 1].tolist()[0])
+        doc.saveas(f"{self.userDir}/tyvekTile.dxf")
+
+        mesh = pv.PolyData()
+        mesh.points = pvVerts
+        mesh.lines = pvLines
+        print(f"np: {perf_counter()-time1}")
+        return mesh
+
+    def genOuterPolygon2(self, msp, pvVerts, pvLines):
+        time1 = perf_counter()
         theta = 2 * np.pi / self.numSides
         polygonSideHalf = self.concentricPolygonRadius * np.tan(theta / 2)
         ogPair = (
@@ -309,6 +512,39 @@ class Generator:
             pvLines.append((2, offset, offset + 1))
             msp.add_line(v1, v2)
 
+        print(f"non-np outer polygon: {perf_counter() - time1}")
+        return (pvVerts, pvLines)
+
+    def genOuterPolygon(self, msp, pvVerts, pvLines):
+        time1 = perf_counter()
+        stock = np.arange(self.numSides)
+        thetas = 2 * np.pi / self.numSides * stock
+        polygonSideHalf = self.concentricPolygonRadius * np.tan(np.pi / self.numSides)
+        ogPair = np.array(
+            (
+                [polygonSideHalf, self.concentricPolygonRadius],
+                [-1 * polygonSideHalf, self.concentricPolygonRadius],
+            )
+        )
+        rotational_matrices = np.array(
+            [
+                [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
+                for theta in thetas
+            ]
+        )
+        pvLines = [
+            (2, offset, offset + 1)
+            for offset in range(len(pvVerts), len(pvVerts) + 2 * self.numSides, 2)
+        ]
+
+        product = np.matmul(rotational_matrices, ogPair.T)
+        result = product.transpose((0, 2, 1)).reshape((-1, 2))
+        zeros = np.zeros(len(result)).reshape((-1, 1))
+        verts_3d = np.concatenate((result, zeros), axis=1)
+        pvVerts.extend(verts_3d.tolist())
+        for i in range(self.numSides):
+            msp.add_line(pvVerts[2 * i], pvVerts[2 * i + 1])
+        print(f"np outer polygon: {perf_counter() - time1}")
         return (pvVerts, pvLines)
 
     def generateFoam(self):

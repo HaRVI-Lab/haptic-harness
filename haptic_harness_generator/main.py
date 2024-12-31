@@ -15,6 +15,7 @@ def run_app():
     )
     args = parser.parse_args()
     export_dir = os.path.abspath(args.export_dir)
+    print(export_dir)
     if not os.path.isabs(export_dir):
         print(f"Error: Please provide an absolute path. Converted path: {export_dir}")
         print(
