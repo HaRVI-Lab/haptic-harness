@@ -2,6 +2,7 @@ from logging import currentframe
 from PyQt5.QtCore import ws
 from ezdxf.layouts import base
 import numpy as np
+from numpy._core.defchararray import lower
 import pyvista as pv
 import ezdxf
 import numpy as np
@@ -462,7 +463,7 @@ class Generator:
         doc = ezdxf.new(dxfversion="AC1015")
         msp = doc.modelspace()
         pvVerts, pvLines = self.genCenter(msp)
-        for i in range(1):
+        for i in range(self.numSides):
             offset = len(pvVerts)
             theta = 2 * np.pi / self.numSides * i
             lines = self.genTyvekTileFlap()
@@ -491,7 +492,7 @@ class Generator:
         print(f"np: {perf_counter()-time1}")
         return mesh
 
-    def genOuterPolygon2(self, msp, pvVerts, pvLines):
+    def genOuterPolygon(self, msp, pvVerts, pvLines):
         time1 = perf_counter()
         theta = 2 * np.pi / self.numSides
         polygonSideHalf = self.concentricPolygonRadius * np.tan(theta / 2)
@@ -515,38 +516,6 @@ class Generator:
         print(f"non-np outer polygon: {perf_counter() - time1}")
         return (pvVerts, pvLines)
 
-    def genOuterPolygon(self, msp, pvVerts, pvLines):
-        time1 = perf_counter()
-        stock = np.arange(self.numSides)
-        thetas = 2 * np.pi / self.numSides * stock
-        polygonSideHalf = self.concentricPolygonRadius * np.tan(np.pi / self.numSides)
-        ogPair = np.array(
-            (
-                [polygonSideHalf, self.concentricPolygonRadius],
-                [-1 * polygonSideHalf, self.concentricPolygonRadius],
-            )
-        )
-        rotational_matrices = np.array(
-            [
-                [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
-                for theta in thetas
-            ]
-        )
-        pvLines = [
-            (2, offset, offset + 1)
-            for offset in range(len(pvVerts), len(pvVerts) + 2 * self.numSides, 2)
-        ]
-
-        product = np.matmul(rotational_matrices, ogPair.T)
-        result = product.transpose((0, 2, 1)).reshape((-1, 2))
-        zeros = np.zeros(len(result)).reshape((-1, 1))
-        verts_3d = np.concatenate((result, zeros), axis=1)
-        pvVerts.extend(verts_3d.tolist())
-        for i in range(self.numSides):
-            msp.add_line(pvVerts[2 * i], pvVerts[2 * i + 1])
-        print(f"np outer polygon: {perf_counter() - time1}")
-        return (pvVerts, pvLines)
-
     def generateFoam(self):
         doc = ezdxf.new(dxfversion="AC1015")
         msp = doc.modelspace()
@@ -559,38 +528,78 @@ class Generator:
         mesh.lines = pvLines
         return mesh
 
-    def generateMagnetRing(self):
-        def genMagnetHoles(msp, pvVerts, pvLines):
-            resolution = 30
-            for i in range(self.numMangetsInRing):
-                theta = 2 * np.pi / self.numMangetsInRing * i
-                for j in range(resolution):
-                    currTheta = 2 * np.pi / resolution * j
-                    v1 = [
-                        self.magnetRadius * np.cos(currTheta)
-                        + np.cos(theta) * self.magnetRingRadius,
-                        self.magnetRadius * np.sin(currTheta)
-                        + np.sin(theta) * self.magnetRingRadius,
-                    ]
-                    nextTheta = 2 * np.pi / resolution * (j + 1)
-                    v2 = [
-                        self.magnetRadius * np.cos(nextTheta)
-                        + np.cos(theta) * self.magnetRingRadius,
-                        self.magnetRadius * np.sin(nextTheta)
-                        + np.sin(theta) * self.magnetRingRadius,
-                    ]
-                    msp.add_line(v1, v2)
-                    offset = len(pvVerts)
-                    pvVerts.append((v1[0].item(), v1[1].item(), 0))
-                    pvVerts.append((v2[0].item(), v2[1].item(), 0))
-                    pvLines.append((2, offset, offset + 1))
-            return (pvVerts, pvLines)
+    def genMagnetHoles2(self, msp, pvVerts, pvLines):
+        time1 = perf_counter()
+        resolution = 30
+        for i in range(self.numMangetsInRing):
+            theta = 2 * np.pi / self.numMangetsInRing * i
+            for j in range(resolution):
+                currTheta = 2 * np.pi / resolution * j
+                v1 = [
+                    self.magnetRadius * np.cos(currTheta)
+                    + np.cos(theta) * self.magnetRingRadius,
+                    self.magnetRadius * np.sin(currTheta)
+                    + np.sin(theta) * self.magnetRingRadius,
+                ]
+                nextTheta = 2 * np.pi / resolution * (j + 1)
+                v2 = [
+                    self.magnetRadius * np.cos(nextTheta)
+                    + np.cos(theta) * self.magnetRingRadius,
+                    self.magnetRadius * np.sin(nextTheta)
+                    + np.sin(theta) * self.magnetRingRadius,
+                ]
+                msp.add_line(v1, v2)
+                offset = len(pvVerts)
+                pvVerts.append((v1[0].item(), v1[1].item(), 0))
+                pvVerts.append((v2[0].item(), v2[1].item(), 0))
+                pvLines.append((2, offset, offset + 1))
+        print(f"non-np magnet: {perf_counter() - time1}")
+        return (pvVerts, pvLines)
 
+    def genMagnetHoles(self, msp, pvVerts, pvLines):
+        time1 = perf_counter()
+        resolution = 30
+        for i in range(self.numMangetsInRing):
+            theta = 2 * np.pi / self.numMangetsInRing * i
+            offset = len(pvVerts)
+            stock = np.arange(resolution)
+            thetas = 2 * np.pi / resolution * stock
+            x_vals_v1 = (
+                self.magnetRadius * np.cos(thetas)
+                + np.cos(theta) * self.magnetRingRadius
+            )
+            y_vals_v1 = (
+                self.magnetRadius * np.sin(thetas)
+                + np.sin(theta) * self.magnetRingRadius
+            )
+            v1 = np.column_stack((x_vals_v1, y_vals_v1))
+            x_vals_v2 = (
+                self.magnetRadius * np.cos(np.roll(thetas, -1))
+                + np.cos(theta) * self.magnetRingRadius
+            )
+            y_vals_v2 = (
+                self.magnetRadius * np.sin(np.roll(thetas, -1))
+                + np.sin(theta) * self.magnetRingRadius
+            )
+            v2 = np.column_stack((x_vals_v2, y_vals_v2))
+            combined = np.column_stack((v1, v2)).reshape(-1, 2)
+            verts_3d = np.column_stack((combined, np.zeros(resolution * 2)))
+            for j in range(resolution):
+                msp.add_line(verts_3d[2 * j], verts_3d[2 * j + 1])
+            newLines = [
+                (2, j, j + 1) for j in range(offset, offset + 2 * resolution, 2)
+            ]
+            pvLines.extend(newLines)
+            pvVerts.extend(verts_3d)
+        print(f"np magnet: {perf_counter() - time1}")
+        return (pvVerts, pvLines)
+
+    def generateMagnetRing(self):
         doc = ezdxf.new(dxfversion="AC1015")
         msp = doc.modelspace()
         pvVerts, pvLines = self.genCenter(msp)
         pvVerts, pvLines = self.genOuterPolygon(msp, pvVerts, pvLines)
-        pvVerts, pvLines = genMagnetHoles(msp, pvVerts, pvLines)
+        pvVerts, pvLines = self.genMagnetHoles(msp, pvVerts, pvLines)
         doc.saveas(f"{self.userDir}/magnetRing.dxf")
 
         mesh = pv.PolyData()
@@ -598,7 +607,8 @@ class Generator:
         mesh.lines = pvLines
         return mesh
 
-    def polygonalPrism(self, radius, res, height, origin):
+    def polygonalPrism2(self, radius, res, height, origin):
+        time1 = perf_counter()
         totalVerts = []
         totalFaces = []
         thetaInterval = 2 * np.pi / res
@@ -627,6 +637,34 @@ class Generator:
             totalFaces.append((3, i, len(totalVerts) - 2, (i + 1) % res))
             totalFaces.append((3, i + res, len(totalVerts) - 1, (i + 1) % res + res))
         mesh = pv.PolyData(totalVerts, totalFaces)
+        print(f"non-np prism: {perf_counter() - time1}")
+        return mesh
+
+    def polygonalPrism(self, radius, res, height, origin):
+        time1 = perf_counter()
+        totalFaces = []
+
+        thetas = np.linspace(0, 2 * np.pi, res, endpoint=False)
+        z_bottom = -height / 2 + origin[2]
+        z_top = height / 2 + origin[2]
+        x = radius * np.cos(thetas) + origin[0]
+        y = radius * np.sin(thetas) + origin[1]
+        z_bottom_array = np.full(res, z_bottom)
+        z_top_array = np.full(res, z_top)
+        bottom_vertices = np.column_stack((x, y, z_bottom_array))
+        top_vertices = np.column_stack((x, y, z_top_array))
+        totalVerts = np.vstack((bottom_vertices, top_vertices)).tolist()
+
+        for i in range(res):
+            totalFaces.append((3, i, (i + 1) % res, i + res))
+            totalFaces.append((3, i + res, (i + 1) % res + res, (i + 1) % res))
+        totalVerts.append((origin[0], origin[1], -height / 2 + origin[2]))
+        totalVerts.append((origin[0], origin[1], height / 2 + origin[2]))
+        for i in range(res):
+            totalFaces.append((3, i, len(totalVerts) - 2, (i + 1) % res))
+            totalFaces.append((3, i + res, len(totalVerts) - 1, (i + 1) % res + res))
+        mesh = pv.PolyData(totalVerts, totalFaces)
+        print(f"np prism: {perf_counter() - time1}")
         return mesh
 
     def polygonalPrismSlanted(self, radiusBottom, radiusTop, res, height, origin):
@@ -725,45 +763,75 @@ class Generator:
         finalMesh.save(f"{self.userDir}/base.stl")
         return finalMesh
 
-    def generateBottomMagnetConnector(self, origin: np.array):
-        def generateMagneticConnectorHalf(origin: np.array):
-            resolution = 30
-            vertices = []
-            faces = []
-            for i in range(resolution):
-                theta = np.pi / resolution * i - np.pi / 2
-                r = self.magnetRadius + self.magnetClipThickness
-                vertices.append(
-                    (
-                        r * np.cos(theta)
-                        + self.distanceBetweenMagnetsInClip / 2
-                        + origin[0],
-                        r * np.sin(theta) + origin[1],
-                        origin[2],
-                    )
+    def generateMagneticConnectorHalf2(self, origin: np.array):
+        time1 = perf_counter()
+        resolution = 30
+        vertices = []
+        faces = []
+        for i in range(resolution):
+            theta = np.pi / resolution * i - np.pi / 2
+            r = self.magnetRadius + self.magnetClipThickness
+            vertices.append(
+                (
+                    r * np.cos(theta)
+                    + self.distanceBetweenMagnetsInClip / 2
+                    + origin[0],
+                    r * np.sin(theta) + origin[1],
+                    origin[2],
                 )
-            for i in range(resolution):
-                theta = np.pi / 2 - np.pi / resolution * i
-                r = self.magnetRadius + self.magnetClipThickness
-                vertices.append(
-                    (
-                        -r * np.cos(theta)
-                        - self.distanceBetweenMagnetsInClip / 2
-                        + origin[0],
-                        r * np.sin(theta) + origin[1],
-                        origin[2],
-                    )
+            )
+        for i in range(resolution):
+            theta = np.pi / 2 - np.pi / resolution * i
+            r = self.magnetRadius + self.magnetClipThickness
+            vertices.append(
+                (
+                    -r * np.cos(theta)
+                    - self.distanceBetweenMagnetsInClip / 2
+                    + origin[0],
+                    r * np.sin(theta) + origin[1],
+                    origin[2],
                 )
-            vertices.append(origin)
-            for i in range(2 * resolution):
-                faces.append((3, len(vertices) - 1, i, (i + 1) % (2 * resolution)))
-            return vertices, faces
+            )
+        vertices.append(origin)
+        for i in range(2 * resolution):
+            faces.append((3, len(vertices) - 1, i, (i + 1) % (2 * resolution)))
+        print(f"non-np magnetic connector: {perf_counter() - time1}")
+        return vertices, faces
 
-        bottomVerts, bottomFaces = generateMagneticConnectorHalf(origin)
+    def generateMagneticConnectorHalf(self, origin: np.array):
+        time1 = perf_counter()
+        resolution = 30
+        vertices = []
+        r = self.magnetRadius + self.magnetClipThickness
+        stock = np.arange(resolution)
+        thetas = np.pi / resolution * stock - np.pi / 2
+        x_vals = r * np.cos(thetas) + self.distanceBetweenMagnetsInClip / 2 + origin[0]
+        y_vals = r * np.sin(thetas) + origin[1]
+        z_vals = np.full(resolution, origin[2])
+        thetas_1 = np.pi / 2 - np.pi / resolution * stock
+        x_vals_1 = (
+            -r * np.cos(thetas_1) - self.distanceBetweenMagnetsInClip / 2 + origin[0]
+        )
+        y_vals_1 = r * np.sin(thetas_1) + origin[1]
+
+        vertices.extend(np.column_stack((x_vals, y_vals, z_vals)).tolist())
+        vertices.extend(np.column_stack((x_vals_1, y_vals_1, z_vals)).tolist())
+        vertices.append(origin)
+
+        faces = [
+            (3, len(vertices) - 1, i, (i + 1) % (2 * resolution))
+            for i in range(2 * resolution)
+        ]
+        print(f"np magnetic connector: {perf_counter() - time1}")
+        return vertices, faces
+
+    def generateBottomMagnetConnector(self, origin: np.array):
+
+        bottomVerts, bottomFaces = self.generateMagneticConnectorHalf(origin)
         topHalfOrigin = np.array(
             (origin[0], origin[1], origin[2] + self.magnetClipThickness)
         )
-        topVerts, topFaces = generateMagneticConnectorHalf(topHalfOrigin)
+        topVerts, topFaces = self.generateMagneticConnectorHalf(topHalfOrigin)
         totalVerts = []
         totalFaces = []
         totalVerts.extend(bottomVerts)
@@ -826,56 +894,110 @@ class Generator:
         base.save(f"{self.userDir}/bottomClip.stl")
         return base
 
+    def generateSlot2(self, origin: np.array, width, height, r):
+        time1 = perf_counter()
+        resolution = 30
+        vertices = []
+        faces = []
+        for i in range(resolution):
+            theta = np.pi / resolution * i - np.pi / 2
+            if i < resolution / 2:
+                vertices.append(
+                    (
+                        r * np.cos(theta) + height / 2 + origin[0],
+                        r * np.sin(theta) + origin[1] - self.magnetClipThickness * 2,
+                        origin[2],
+                    )
+                )
+            else:
+                vertices.append(
+                    (
+                        r * np.cos(theta) + height / 2 + origin[0],
+                        r * np.sin(theta) + origin[1] + width,
+                        origin[2],
+                    )
+                )
+        for i in range(resolution):
+            theta = np.pi / 2 - np.pi / resolution * i
+            if i < resolution / 2:
+                vertices.append(
+                    (
+                        -r * np.cos(theta) - height / 2 + origin[0],
+                        r * np.sin(theta) + origin[1] + width,
+                        origin[2],
+                    )
+                )
+            else:
+                vertices.append(
+                    (
+                        -r * np.cos(theta) - height / 2 + origin[0],
+                        r * np.sin(theta) + origin[1] - self.magnetClipThickness * 2,
+                        origin[2],
+                    )
+                )
+        vertices.append(origin)
+        for i in range(2 * resolution):
+            faces.append((3, len(vertices) - 1, i, (i + 1) % (2 * resolution)))
+        print(f"non-np magnetic connector: {perf_counter() - time1}")
+        return vertices, faces
+
+    def generateSlot(self, origin: np.array, width, height, r):
+        time1 = perf_counter()
+        resolution = 30
+        vertices = []
+        lower_bound = int(resolution / 2)
+        thetas = np.pi / resolution * np.arange(lower_bound) - np.pi / 2
+        vertices.extend(
+            np.column_stack(
+                (
+                    r * np.cos(thetas) + height / 2 + origin[0],
+                    r * np.sin(thetas) + origin[1] - self.magnetClipThickness * 2,
+                    np.full(lower_bound, origin[2]),
+                )
+            ).tolist()
+        )
+        thetas = np.pi / resolution * np.arange(lower_bound, resolution) - np.pi / 2
+        vertices.extend(
+            np.column_stack(
+                (
+                    r * np.cos(thetas) + height / 2 + origin[0],
+                    r * np.sin(thetas) + origin[1] + width,
+                    np.full(resolution - lower_bound, origin[2]),
+                )
+            ).tolist()
+        )
+
+        lower_bound = int(resolution / 2)
+        thetas = np.pi / 2 - np.pi / resolution * np.arange(lower_bound)
+        vertices.extend(
+            np.column_stack(
+                (
+                    -r * np.cos(thetas) - height / 2 + origin[0],
+                    r * np.sin(thetas) + origin[1] + width,
+                    np.full(lower_bound, origin[2]),
+                )
+            ).tolist()
+        )
+        thetas = np.pi / 2 - np.pi / resolution * np.arange(lower_bound, resolution)
+        vertices.extend(
+            np.column_stack(
+                (
+                    -r * np.cos(thetas) - height / 2 + origin[0],
+                    r * np.sin(thetas) + origin[1] - self.magnetClipThickness * 2,
+                    np.full(resolution - lower_bound, origin[2]),
+                )
+            ).tolist()
+        )
+        vertices.append(origin)
+        faces = [
+            (3, len(vertices) - 1, i, (i + 1) % (2 * resolution))
+            for i in range(2 * resolution)
+        ]
+        print(f"np magnetic connector: {perf_counter() - time1}")
+        return vertices, faces
+
     def generateTopClip(self):
         # the origin centers at the mid point of the line connecting the two magnets
-        def generateSlot(origin: np.array, width, height, r):
-            resolution = 30
-            vertices = []
-            faces = []
-            for i in range(resolution):
-                theta = np.pi / resolution * i - np.pi / 2
-                if i < resolution / 2:
-                    vertices.append(
-                        (
-                            r * np.cos(theta) + height / 2 + origin[0],
-                            r * np.sin(theta)
-                            + origin[1]
-                            - self.magnetClipThickness * 2,
-                            origin[2],
-                        )
-                    )
-                else:
-                    vertices.append(
-                        (
-                            r * np.cos(theta) + height / 2 + origin[0],
-                            r * np.sin(theta) + origin[1] + width,
-                            origin[2],
-                        )
-                    )
-            for i in range(resolution):
-                theta = np.pi / 2 - np.pi / resolution * i
-                if i < resolution / 2:
-                    vertices.append(
-                        (
-                            -r * np.cos(theta) - height / 2 + origin[0],
-                            r * np.sin(theta) + origin[1] + width,
-                            origin[2],
-                        )
-                    )
-                else:
-                    vertices.append(
-                        (
-                            -r * np.cos(theta) - height / 2 + origin[0],
-                            r * np.sin(theta)
-                            + origin[1]
-                            - self.magnetClipThickness * 2,
-                            origin[2],
-                        )
-                    )
-            vertices.append(origin)
-            for i in range(2 * resolution):
-                faces.append((3, len(vertices) - 1, i, (i + 1) % (2 * resolution)))
-            return vertices, faces
 
         origin = np.array((0, 0, 0))
         width = (
@@ -890,7 +1012,7 @@ class Generator:
         )
         r = 2 * self.magnetClipThickness + self.magnetRadius
 
-        bottomVerts, bottomFaces = generateSlot(origin, width, height, r)
+        bottomVerts, bottomFaces = self.generateSlot(origin, width, height, r)
         topHalfOrigin = np.array(
             (
                 origin[0],
@@ -898,7 +1020,7 @@ class Generator:
                 origin[2] + self.magnetClipThickness + self.magnetThickness * 2,
             )
         )
-        topVerts, topFaces = generateSlot(topHalfOrigin, width, height, r)
+        topVerts, topFaces = self.generateSlot(topHalfOrigin, width, height, r)
         totalVerts = []
         totalFaces = []
         totalVerts.extend(bottomVerts)
@@ -969,13 +1091,13 @@ class Generator:
                 origin[2],
             )
         )
-        bottomVerts, bottomFaces = generateSlot(
+        bottomVerts, bottomFaces = self.generateSlot(
             slotOrigin, self.slotHeight, self.slotWidth, self.slotHeight / 2
         )
         topHalfOrigin = slotOrigin + np.array(
             (0, 0, self.magnetClipThickness + self.magnetThickness * 2)
         )
-        topVerts, topFaces = generateSlot(
+        topVerts, topFaces = self.generateSlot(
             topHalfOrigin, self.slotHeight, self.slotWidth, self.slotHeight / 2
         )
         totalVerts = []
