@@ -1,7 +1,8 @@
 from pyvistaqt import QtInteractor, MainWindow
 from PyQt5 import QtCore, QtWidgets, Qt, QtGui, QtWebEngineWidgets
 from .Styles import Styles
-from .Generator import Generator
+from .Generator import Generator, WorkerWrapper
+from time import perf_counter
 import re
 import os
 
@@ -20,7 +21,14 @@ class MyMainWindow(MainWindow):
         primaryLayout = Qt.QHBoxLayout()
         self.frame = QtWidgets.QFrame()
         self.plotters = []
+        self.regen_button = QtWidgets.QPushButton("Generate Parts")
+        self.regen_button.clicked.connect(self.regen)
+        self.pbar = QtWidgets.QProgressBar(self)
+        self.pbar.setFormat("Initialized")
         self.generator = Generator(userDir)
+        self.generator.signals.progress.connect(self.update_progress)
+        self.generator.signals.finished.connect(self.task_finished)
+        self.threadpool = QtCore.QThreadPool()
         self.dataValidationCheckBox = QtWidgets.QCheckBox("Data Validation", self)
         self.dataValidationCheckBox.setChecked(True)
         self.dataValidationCheckBox.clicked.connect(self.setDataValidation)
@@ -29,8 +37,11 @@ class MyMainWindow(MainWindow):
         hbox = QtWidgets.QHBoxLayout()
         hbox.addWidget(self.paramtersPane())
         vbox = QtWidgets.QVBoxLayout()
+        time1 = perf_counter()
+        vbox.addWidget(self.pbar)
         vbox.addWidget(self.initTilePane())
         vbox.addWidget(self.initPeripheralsPane())
+        print(f"Initialization time: {perf_counter() - time1}")
         hbox.addLayout(vbox)
         tab.setLayout(hbox)
 
@@ -62,8 +73,18 @@ class MyMainWindow(MainWindow):
         vbox.addWidget(self.dataValidationCheckBox)
 
         attributes = self.generator.__dict__
+        non_parameter_attributes = [
+            "userDir",
+            "tyvek_tile",
+            "foam",
+            "magnet_ring",
+            "base",
+            "bottom_clip",
+            "top_clip",
+            "signals",
+        ]
         for attributeKey, attributeVal in attributes.items():
-            if attributeKey == "userDir":
+            if attributeKey in non_parameter_attributes:
                 continue
             hbox = QtWidgets.QHBoxLayout()
             formattedAttributeName = re.sub(
@@ -95,8 +116,7 @@ class MyMainWindow(MainWindow):
             hbox.addWidget(le)
             vbox.addLayout(hbox)
 
-        regen = QtWidgets.QPushButton("Generate Parts")
-        vbox.addWidget(regen)
+        vbox.addWidget(self.regen_button)
         label = QtWidgets.QLabel(self)
         pixmap = QtGui.QPixmap("haptic_harness_generator/anatomyOfTile.jpg")
         scaled_pixmap = pixmap.scaledToWidth(
@@ -104,7 +124,6 @@ class MyMainWindow(MainWindow):
         )
         label.setPixmap(scaled_pixmap)
         vbox.addWidget(label)
-        regen.clicked.connect(self.regenParts)
 
         scroll.setLayout(vbox)
         self.entryBox.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
@@ -132,19 +151,19 @@ class MyMainWindow(MainWindow):
             interactors_layout.addWidget(frame)
 
         self.plotters[0].add_mesh(
-            self.generator.generateTyvekTile(),
+            self.generator.tyvek_tile,
             show_edges=True,
             line_width=3,
             color=self.interactorColor,
         )
         self.plotters[1].add_mesh(
-            self.generator.generateFoam(),
+            self.generator.foam,
             show_edges=True,
             line_width=3,
             color=self.interactorColor,
         )
         self.plotters[2].add_mesh(
-            self.generator.generateMagnetRing(),
+            self.generator.magnet_ring,
             show_edges=True,
             line_width=3,
             color=self.interactorColor,
@@ -168,9 +187,7 @@ class MyMainWindow(MainWindow):
         frame.setFrameShape(Qt.QFrame.StyledPanel)
         frame.setLayout(section)
         plotLayout.addWidget(frame)
-        self.plotters[3].add_mesh(
-            self.generator.generateBase(), color=self.interactorColor
-        )
+        self.plotters[3].add_mesh(self.generator.base, color=self.interactorColor)
 
         section = QtWidgets.QVBoxLayout()
         self.plotters.append(QtInteractor(self.frame))
@@ -183,7 +200,7 @@ class MyMainWindow(MainWindow):
         frame.setLayout(section)
         plotLayout.addWidget(frame)
         self.plotters[4].add_mesh(
-            self.generator.generateBottomClip(), color=self.interactorColor
+            self.generator.bottom_clip, color=self.interactorColor
         )
 
         section = QtWidgets.QVBoxLayout()
@@ -196,9 +213,7 @@ class MyMainWindow(MainWindow):
         frame.setFrameShape(Qt.QFrame.StyledPanel)
         frame.setLayout(section)
         plotLayout.addWidget(frame)
-        self.plotters[5].add_mesh(
-            self.generator.generateTopClip(), color=self.interactorColor
-        )
+        self.plotters[5].add_mesh(self.generator.top_clip, color=self.interactorColor)
 
         frame = Qt.QFrame(objectName="sectionFrame")
         frame.setFrameShape(Qt.QFrame.StyledPanel)
@@ -225,13 +240,63 @@ class MyMainWindow(MainWindow):
             elif retval == QtWidgets.QMessageBox.Cancel:
                 self.dataValidationCheckBox.setChecked(True)
 
-    def regenParts(self):
+    def update_progress(self, value):
+        progress_labels = {
+            1: "Generating tyvek tile",
+            2: "Generating foam",
+            3: "Generating magnet ring",
+            4: "Generating base",
+            5: "Generating bottom clip",
+            6: "Generating top clip",
+            7: "Generation complete",
+        }
+        self.pbar.setValue(value / len(progress_labels) * 100)
+        self.pbar.setFormat(progress_labels[value])
+
+    def task_finished(self):
+        self.regen_button.setEnabled(True)
+        self.regen_button.setStyleSheet("background-color: #333333")
+        self.plotters[0].clear_actors()
+        self.plotters[0].add_mesh(
+            self.generator.tyvek_tile,
+            show_edges=True,
+            line_width=3,
+            color=self.interactorColor,
+        )
+        self.plotters[1].clear_actors()
+        self.plotters[1].add_mesh(
+            self.generator.foam,
+            show_edges=True,
+            line_width=3,
+            color=self.interactorColor,
+        )
+        self.plotters[2].clear_actors()
+        self.plotters[2].add_mesh(
+            self.generator.magnet_ring,
+            show_edges=True,
+            line_width=3,
+            color=self.interactorColor,
+        )
+
+        self.plotters[3].clear_actors()
+        self.plotters[3].add_mesh(self.generator.base, color=self.interactorColor)
+
+        self.plotters[4].clear_actors()
+        self.plotters[4].add_mesh(
+            self.generator.bottom_clip, color=self.interactorColor
+        )
+
+        self.plotters[5].clear_actors()
+        self.plotters[5].add_mesh(self.generator.top_clip, color=self.interactorColor)
+
+    def regen(self):
         messages = []
         if self.dataValidationCheckBox.isChecked():
             messages = self.generator.validate()
         if len(messages) == 0:
-            self.regen()
-            self.regenPeripherals()
+            self.regen_button.setEnabled(False)
+            self.regen_button.setStyleSheet("background-color: #777777")
+            self.threadpool.start(WorkerWrapper(self.generator))
         else:
             msg = QtWidgets.QMessageBox()
             msg.setIcon(QtWidgets.QMessageBox.Critical)
@@ -239,42 +304,3 @@ class MyMainWindow(MainWindow):
             msg.setWindowTitle("Validation Error")
             msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
             retval = msg.exec_()
-
-    def regen(self):
-        self.plotters[0].clear_actors()
-        self.plotters[0].add_mesh(
-            self.generator.generateTyvekTile(),
-            show_edges=True,
-            line_width=3,
-            color=self.interactorColor,
-        )
-        self.plotters[1].clear_actors()
-        self.plotters[1].add_mesh(
-            self.generator.generateFoam(),
-            show_edges=True,
-            line_width=3,
-            color=self.interactorColor,
-        )
-        self.plotters[2].clear_actors()
-        self.plotters[2].add_mesh(
-            self.generator.generateMagnetRing(),
-            show_edges=True,
-            line_width=3,
-            color=self.interactorColor,
-        )
-
-    def regenPeripherals(self):
-        self.plotters[3].clear_actors()
-        self.plotters[3].add_mesh(
-            self.generator.generateBase(), color=self.interactorColor
-        )
-
-        self.plotters[4].clear_actors()
-        self.plotters[4].add_mesh(
-            self.generator.generateBottomClip(), color=self.interactorColor
-        )
-
-        self.plotters[5].clear_actors()
-        self.plotters[5].add_mesh(
-            self.generator.generateTopClip(), color=self.interactorColor
-        )

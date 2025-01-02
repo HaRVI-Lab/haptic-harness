@@ -17,6 +17,16 @@ class Styles:
             font-size: 16px;
         }
         
+        QProgressBar {
+            border: 1px solid @borderGray;
+            border-radius: 5px;
+            text-align: center;
+            padding: 5px;
+        }
+        QProgressBar::chunk {
+            background-color: @green;
+        }
+
         #totalBackground {
             background-color: @secondaryGray;
         }
