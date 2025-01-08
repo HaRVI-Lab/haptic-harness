@@ -5,6 +5,7 @@ from .Generator import Generator, WorkerWrapper
 from time import perf_counter
 import re
 import os
+from pyvista import Camera
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 instructions_file_path = os.path.join(current_dir, "instructions.html")
@@ -25,6 +26,7 @@ class MyMainWindow(MainWindow):
         self.regen_button.clicked.connect(self.regen)
         self.pbar = QtWidgets.QProgressBar(self)
         self.pbar.setFormat("Initialized")
+        self.pbar.setValue(100)
         self.generator = Generator(userDir)
         self.generator.signals.progress.connect(self.update_progress)
         self.generator.signals.finished.connect(self.task_finished)
@@ -41,6 +43,12 @@ class MyMainWindow(MainWindow):
         vbox.addWidget(self.pbar)
         vbox.addWidget(self.initTilePane())
         vbox.addWidget(self.initPeripheralsPane())
+        self.settings = []
+        for pl in self.plotters[3:]:
+            self.settings.append(pl.camera.copy())
+        reset_view = QtWidgets.QPushButton("Reset View")
+        reset_view.clicked.connect(self.reset_view)
+        vbox.addWidget(reset_view)
         print(f"Initialization time: {perf_counter() - time1}")
         hbox.addLayout(vbox)
         tab.setLayout(hbox)
@@ -173,6 +181,10 @@ class MyMainWindow(MainWindow):
         frame.setFrameShape(Qt.QFrame.StyledPanel)
         frame.setLayout(interactors_layout)
         return frame
+
+    def reset_view(self):
+        for i in range(3):
+            self.plotters[i + 3].camera = self.settings[i].copy()
 
     def initPeripheralsPane(self):
         plotLayout = Qt.QHBoxLayout()
