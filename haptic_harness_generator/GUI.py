@@ -19,6 +19,7 @@ class MyMainWindow(MainWindow):
         styleSheet = Styles()
         super().setStyleSheet(styleSheet.getStyles())
         self.interactorColor = styleSheet.colors["green"]
+        self.grayColor = styleSheet.colors["lightGray"]
         primaryLayout = Qt.QHBoxLayout()
         self.frame = QtWidgets.QFrame()
         self.plotters = []
@@ -78,52 +79,72 @@ class MyMainWindow(MainWindow):
         vbox = QtWidgets.QVBoxLayout()
         vbox.setContentsMargins(20, 20, 40, 20)
 
-        vbox.addWidget(self.dataValidationCheckBox)
-
         attributes = self.generator.__dict__
-        non_parameter_attributes = [
-            "userDir",
-            "tyvek_tile",
-            "foam",
-            "magnet_ring",
-            "base",
-            "bottom_clip",
-            "top_clip",
-            "signals",
-        ]
-        for attributeKey, attributeVal in attributes.items():
-            if attributeKey in non_parameter_attributes:
-                continue
-            hbox = QtWidgets.QHBoxLayout()
-            formattedAttributeName = re.sub(
-                r"(?<!^)(?=[A-Z])", " ", attributeKey
-            ).title()
-            label = QtWidgets.QLabel(formattedAttributeName)
-            if attributeKey == "numSides" or attributeKey == "numMagnetsInRing":
-                le = QtWidgets.QLineEdit()
-                le.setValidator(
-                    QtGui.QRegularExpressionValidator(
-                        QtCore.QRegularExpression("^\d+$")
-                    )
-                )
-                le.setText(str(attributeVal))
-            else:
-                le = QtWidgets.QLineEdit()
-                le.setValidator(
-                    QtGui.QRegularExpressionValidator(
-                        QtCore.QRegularExpression("^\d+(\.\d+)?$")
-                    )
-                )
-                le.setText(str(attributeVal))
-            le.textChanged.connect(
-                lambda value, attributeKey=attributeKey: self.setGeneratorAttribute(
-                    attributeKey, value
-                )
-            )
-            hbox.addWidget(label)
-            hbox.addWidget(le)
-            vbox.addLayout(hbox)
+        parameter_attributes = {
+            "Tile Parameters": [
+                "concentricPolygonRadius",
+                "tactorRadius",
+                "numSides",
+                "foamThickness",
+                "distanceBetweenMagnetClipAndPolygonEdge",
+                "numMangetsInRing",
+            ],
+            "Magnet Parameters": [
+                "magnetRadius",
+                "magnetThickness",
+            ],
+            "Clip Parameters": [
+                "slotWidth",
+                "slotHeight",
+                "slotBorderRadius",
+                "magnetRingRadius",
+                "magnetClipThickness",
+                "magnetClipRingThickness",
+                "distanceBetweenMagnetsInClip",
+                "distanceBetweenMagnetClipAndSlot",
+            ],
+        }
 
+        unitless = ["numMangetsInRing", "numSides"]
+        for header, params in parameter_attributes.items():
+            header = QtWidgets.QLabel(header, objectName="parameterHeader")
+            header.setAlignment(QtCore.Qt.AlignLeft)
+            vbox.addWidget(header)
+            for attributeKey in params:
+                attributeVal = attributes[attributeKey]
+                hbox = QtWidgets.QHBoxLayout()
+                formattedAttributeName = re.sub(
+                    r"(?<!^)(?=[A-Z])", " ", attributeKey
+                ).title()
+                if attributeKey not in unitless:
+                    formattedAttributeName += " (mm)"
+                label = QtWidgets.QLabel(formattedAttributeName)
+                if attributeKey == "numSides" or attributeKey == "numMagnetsInRing":
+                    le = QtWidgets.QLineEdit()
+                    le.setValidator(
+                        QtGui.QRegularExpressionValidator(
+                            QtCore.QRegularExpression("^\d+$")
+                        )
+                    )
+                    le.setText(str(attributeVal))
+                else:
+                    le = QtWidgets.QLineEdit()
+                    le.setValidator(
+                        QtGui.QRegularExpressionValidator(
+                            QtCore.QRegularExpression("^\d+(\.\d+)?$")
+                        )
+                    )
+                    le.setText(str(attributeVal))
+                le.textChanged.connect(
+                    lambda value, attributeKey=attributeKey: self.setGeneratorAttribute(
+                        attributeKey, value
+                    )
+                )
+                hbox.addWidget(label)
+                hbox.addWidget(le)
+                vbox.addLayout(hbox)
+
+        vbox.addWidget(self.dataValidationCheckBox)
         vbox.addWidget(self.regen_button)
         label = QtWidgets.QLabel(self)
         pixmap = QtGui.QPixmap("haptic_harness_generator/anatomyOfTile.jpg")
@@ -200,6 +221,11 @@ class MyMainWindow(MainWindow):
         frame.setLayout(section)
         plotLayout.addWidget(frame)
         self.plotters[3].add_mesh(self.generator.base, color=self.interactorColor)
+        self.plotters[3].add_logo_widget(
+            "haptic_harness_generator/rotateIcon.png",
+            position=(0.05, 0.05),
+            size=(0.1, 0.1),
+        )
 
         section = QtWidgets.QVBoxLayout()
         self.plotters.append(QtInteractor(self.frame))
@@ -214,6 +240,11 @@ class MyMainWindow(MainWindow):
         self.plotters[4].add_mesh(
             self.generator.bottom_clip, color=self.interactorColor
         )
+        self.plotters[4].add_logo_widget(
+            "haptic_harness_generator/rotateIcon.png",
+            position=(0.05, 0.05),
+            size=(0.1, 0.1),
+        )
 
         section = QtWidgets.QVBoxLayout()
         self.plotters.append(QtInteractor(self.frame))
@@ -226,6 +257,11 @@ class MyMainWindow(MainWindow):
         frame.setLayout(section)
         plotLayout.addWidget(frame)
         self.plotters[5].add_mesh(self.generator.top_clip, color=self.interactorColor)
+        self.plotters[5].add_logo_widget(
+            "haptic_harness_generator/rotateIcon.png",
+            position=(0.05, 0.05),
+            size=(0.1, 0.1),
+        )
 
         frame = Qt.QFrame(objectName="sectionFrame")
         frame.setFrameShape(Qt.QFrame.StyledPanel)
@@ -234,6 +270,51 @@ class MyMainWindow(MainWindow):
 
     def setGeneratorAttribute(self, attrName, val):
         self.generator.customSetAttr(attrName=attrName, val=val)
+        self.grayOutPlotters()
+        self.pbar.setValue(0)
+        self.pbar.setFormat("Ready to Generate")
+
+    def grayOutPlotters(self):
+        opacity = 0.7
+        self.plotters[0].clear_actors()
+        self.plotters[0].add_mesh(
+            self.generator.tyvek_tile,
+            show_edges=True,
+            line_width=3,
+            opacity=opacity,
+            color=self.grayColor,
+        )
+        self.plotters[1].clear_actors()
+        self.plotters[1].add_mesh(
+            self.generator.foam,
+            show_edges=True,
+            line_width=3,
+            opacity=opacity,
+            color=self.grayColor,
+        )
+        self.plotters[2].clear_actors()
+        self.plotters[2].add_mesh(
+            self.generator.magnet_ring,
+            show_edges=True,
+            line_width=3,
+            opacity=opacity,
+            color=self.grayColor,
+        )
+
+        self.plotters[3].clear_actors()
+        self.plotters[3].add_mesh(
+            self.generator.base, color=self.grayColor, opacity=opacity
+        )
+
+        self.plotters[4].clear_actors()
+        self.plotters[4].add_mesh(
+            self.generator.bottom_clip, color=self.grayColor, opacity=opacity
+        )
+
+        self.plotters[5].clear_actors()
+        self.plotters[5].add_mesh(
+            self.generator.top_clip, color=self.grayColor, opacity=opacity
+        )
 
     def setDataValidation(self, state):
         if not self.dataValidationCheckBox.isChecked():

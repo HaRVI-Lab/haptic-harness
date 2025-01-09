@@ -24,6 +24,6 @@ for line in data2:
     if any(image in line for image in replacements.keys()):
         continue
     final_data += line
-with open("haptic_harness_generator/instructions.html", "w") as instructions:
-    html_content = markdown.markdown(final_data)
-    instructions.write(html_content)
+# with open("haptic_harness_generator/instructions.html", "w") as instructions:
+#     html_content = markdown.markdown(final_data)
+#     instructions.write(html_content)

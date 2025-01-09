@@ -92,11 +92,11 @@ class Generator(QRunnable):
 
         if self.tactorRadius >= self.concentricPolygonRadius:
             messages.append(
-                "The tactorRadius and concentricPolygonRadius are incompatible"
+                "The tactorRadius is too large for the concentricPolygonRadius"
             )
         if self.distanceBetweenMagnetsInClip < 2 * self.magnetRadius + tolerance:
             messages.append(
-                "The distanceBetweenMagnetsInClip and magnetRadius are incompatible"
+                "The distanceBetweenMagnetsInClip and magnetRadius are incompatible; try increasing distanceBetweenMagnetClipAndSlot decreasing magnetRadius"
             )
         maxTactorRadius = self.tactorRadius / (np.cos(np.pi / self.numSides))
         if maxTactorRadius + tolerance > self.magnetRingRadius - self.magnetRadius:
@@ -135,6 +135,24 @@ class Generator(QRunnable):
         if self.distanceBetweenMagnetClipAndPolygonEdge < tolerance:
             messages.append(
                 f"The distanceBetweenMagnetClipAndPolygonEdge is less than the minimum tolerance, {tolerance}"
+            )
+
+        x = (concentricPolygonEdge - self.slotWidth) / 2
+        y = (
+            self.distanceBetweenMagnetClipAndPolygonEdge
+            + 2 * (self.magnetRadius + self.magnetClipRingThickness)
+            + self.distanceBetweenMagnetClipAndSlot
+            + self.slotHeight / 2
+        )
+        beta = np.arctan(x / y)
+        hypo = x / np.sin(beta)
+        phi = (np.pi * (self.numSides - 2)) / self.numSides
+        theta = (np.pi - phi) / 2
+        dist = np.sin(beta + theta) * hypo
+        print(f"dist: {dist} | hyp: {hypo} | b+t: {beta+theta} | x: {x} | y: {y}")
+        if 2 * dist < 2 * self.slotBorderRadius + tolerance:
+            messages.append(
+                f"The edges of the flaps are intersecting; try decreasing slotWidth, increasing concentricPolygonRadius, decreasing slotBorderRadius, or decreasing numSides"
             )
 
         return messages
@@ -501,6 +519,9 @@ class Generator(QRunnable):
 
     def generateBase(self):
         prismHeight = 10
+        polygon_theta = 2 * np.pi / self.numSides
+        polygon_edge_half = self.concentricPolygonRadius * np.tan(polygon_theta / 2)
+        incentric_radius = polygon_edge_half / np.sin(polygon_theta / 2)
         prism = self.polygonalPrismSlanted(
             radiusBottom=self.tactorRadius,
             radiusTop=self.tactorRadius * 0.8,
@@ -541,7 +562,7 @@ class Generator(QRunnable):
         # Add foam recess
         outerBase = (
             self.polygonalPrism(
-                radius=self.concentricPolygonRadius * 2,
+                radius=incentric_radius + 10,
                 res=40,
                 height=self.foamThickness,
                 origin=(0, 0, self.magnetThickness / 2 + 1 + self.foamThickness / 2),
@@ -551,7 +572,7 @@ class Generator(QRunnable):
         )
         foamCavity = (
             self.polygonalPrism(
-                radius=self.concentricPolygonRadius,
+                radius=incentric_radius,
                 res=self.numSides,
                 height=self.foamThickness,
                 origin=(0, 0, self.magnetThickness / 2 + 1 + self.foamThickness / 2),

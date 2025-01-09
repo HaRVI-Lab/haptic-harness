@@ -22,7 +22,7 @@ Setting up a new Conda environment through the ternminal with the correct depend
 > Therefore, please select the correct platform for the conda environment like this example for mac: `conda create -n hapticHarnessGenerator python=3.9 --platform osx-64`
 2. Run: `conda activate hapticHarnessGenerator`
 3. Install VTKBool with: `conda install -c conda-forge vtkbool` (ensure conda-forge is in your conda config)
-4. Install ezdxf with: `pip install haptic_harness_generator`
+4. Install the haptic harness generator with: `pip install haptic_harness_generator`
 5. Run the program from your cli with: 
    -   `run-haptic-harness --export-dir [your absolute path]`
    -   Ex. (for Windows) `run-haptic-harness --export-dir C:\Users\Me\Downloads` 

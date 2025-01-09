@@ -33,7 +33,6 @@ class Styles:
 
 
         QLabel {
-            font-size: 16px; 
             padding-bottom: 3px; 
             padding-top: 3px;
         } 
@@ -98,7 +97,11 @@ class Styles:
         }
 
         #sectionHeader{
-            font-size: 20px;
+            font-size: 27px;
+        }
+        #parameterHeader{
+            font-size: 27.65px;
+            color: @lightGray;
         }
 
         QScrollBar {
