@@ -31,9 +31,8 @@ Setting up a new Conda environment through the ternminal with the correct depend
 ## Software Operation
 
 1. Change parameters in the "Generate Tiles" tab
-2. In the "Generaet Tiles" tab, click "Generate Parts" to generate the .dxf files
-3. In the "Generate Peripherals" tab, click "Generate Parts" to generate the .stl files
-4. Generated files can be found in the "exports" directory
+2. In the "Generaet Tiles" tab, click "Generate Parts" to generate the .dxf and .stl files
+3. Generated files can be found in the "exports" directory
 <p align= "center">
     <img src = "images/anatomyOfTile.jpg" alt = "Diagram view" width="76%">
 </p>

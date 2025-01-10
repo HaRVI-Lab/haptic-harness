@@ -9,6 +9,8 @@ from pyvista import Camera
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 instructions_file_path = os.path.join(current_dir, "instructions.html")
+rotate_icon_path = os.path.join(current_dir, "rotateIcon.png")
+anatomy_of_tile_path = os.path.join(current_dir, "anatomyOfTile.jpg")
 
 
 class MyMainWindow(MainWindow):
@@ -147,7 +149,7 @@ class MyMainWindow(MainWindow):
         vbox.addWidget(self.dataValidationCheckBox)
         vbox.addWidget(self.regen_button)
         label = QtWidgets.QLabel(self)
-        pixmap = QtGui.QPixmap("haptic_harness_generator/anatomyOfTile.jpg")
+        pixmap = QtGui.QPixmap(anatomy_of_tile_path)
         scaled_pixmap = pixmap.scaledToWidth(
             self.entryBox.width(), mode=QtCore.Qt.SmoothTransformation
         )
@@ -222,7 +224,7 @@ class MyMainWindow(MainWindow):
         plotLayout.addWidget(frame)
         self.plotters[3].add_mesh(self.generator.base, color=self.interactorColor)
         self.plotters[3].add_logo_widget(
-            "haptic_harness_generator/rotateIcon.png",
+            rotate_icon_path,
             position=(0.05, 0.05),
             size=(0.1, 0.1),
         )
@@ -241,7 +243,7 @@ class MyMainWindow(MainWindow):
             self.generator.bottom_clip, color=self.interactorColor
         )
         self.plotters[4].add_logo_widget(
-            "haptic_harness_generator/rotateIcon.png",
+            rotate_icon_path,
             position=(0.05, 0.05),
             size=(0.1, 0.1),
         )
@@ -258,7 +260,7 @@ class MyMainWindow(MainWindow):
         plotLayout.addWidget(frame)
         self.plotters[5].add_mesh(self.generator.top_clip, color=self.interactorColor)
         self.plotters[5].add_logo_widget(
-            "haptic_harness_generator/rotateIcon.png",
+            rotate_icon_path,
             position=(0.05, 0.05),
             size=(0.1, 0.1),
         )

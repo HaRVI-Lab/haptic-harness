@@ -1,2 +1,3 @@
 include haptic_harness_generator/instructions.html
 include haptic_harness_generator/anatomyOfTile.jpg
+include haptic_harness_generator/rotateIcon.png
