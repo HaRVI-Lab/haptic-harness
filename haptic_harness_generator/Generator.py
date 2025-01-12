@@ -531,7 +531,7 @@ class Generator(QRunnable):
         )
         base = (
             self.polygonalPrism(
-                radius=self.concentricPolygonRadius * 2,
+                radius=incentric_radius + 10,
                 res=40,
                 height=self.magnetThickness + 2,
                 origin=(0, 0, 0),

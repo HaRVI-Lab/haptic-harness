@@ -109,9 +109,11 @@ class MyMainWindow(MainWindow):
 
         unitless = ["numMangetsInRing", "numSides"]
         for header, params in parameter_attributes.items():
+            temp_box = QtWidgets.QVBoxLayout()
+            temp_box.setAlignment(QtCore.Qt.AlignVCenter)
             header = QtWidgets.QLabel(header, objectName="parameterHeader")
             header.setAlignment(QtCore.Qt.AlignLeft)
-            vbox.addWidget(header)
+            temp_box.addWidget(header)
             for attributeKey in params:
                 attributeVal = attributes[attributeKey]
                 hbox = QtWidgets.QHBoxLayout()
@@ -144,7 +146,8 @@ class MyMainWindow(MainWindow):
                 )
                 hbox.addWidget(label)
                 hbox.addWidget(le)
-                vbox.addLayout(hbox)
+                temp_box.addLayout(hbox)
+            vbox.addLayout(temp_box)
 
         vbox.addWidget(self.dataValidationCheckBox)
         vbox.addWidget(self.regen_button)
