@@ -33,7 +33,7 @@ Setting up a new Conda environment through the ternminal with the correct depend
 2. In the "Generaet Tiles" tab, click "Generate Parts" to generate the .dxf and .stl files
 3. Generated files can be found in the "exports" directory
 <p align= "center">
-    <img src = "images/haptics.jpg" alt = "Diagram view" width="76%">
+    <img src = "images/hapticsLandscape.jpg" alt = "Diagram view" width="76%">
 </p>
 
 
