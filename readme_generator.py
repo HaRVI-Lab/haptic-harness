@@ -4,7 +4,7 @@ replacements = {
     "images/hexagonExploded.jpg": "https://github.com/HaRVI-Lab/haptic-harness/raw/main/images/hexagonExploded.jpg",
     "images/flatView.jpg": "https://github.com/HaRVI-Lab/haptic-harness/raw/main/images/flatView.jpg",
     "images/squareExploded.jpg": "https://github.com/HaRVI-Lab/haptic-harness/raw/main/images/squareExploded.jpg",
-    "images/anatomyOfTile.jpg": "https://github.com/HaRVI-Lab/haptic-harness/raw/main/images/anatomyOfTile.jpg",
+    "images/haptics.jpg": "https://github.com/HaRVI-Lab/haptic-harness/raw/main/images/haptics.jpg",
     "images/diagramOne.jpg": "https://github.com/HaRVI-Lab/haptic-harness/raw/main/images/diagramOne.jpg",
 }
 

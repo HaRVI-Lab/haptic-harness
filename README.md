@@ -16,14 +16,13 @@ A software to easily generate parameterized tiles for haptic harnesses
 
 Setting up a new Conda environment through the ternminal with the correct dependencies:
 
-1. Create a new conda environment with Python 3.9 using: `conda create -n hapticHarnessGenerator python=3.9`
+1. Create a new conda environment with Python 3.9 using: `conda create -n hapticHarnessGenerator python=3.9 vtkbool vtk -c conda-forge`
 > [!WARNING]  
 > vtkbool through conda-forge is only availabe on win64, linux64, and osx64. Please see: https://github.com/zippy84/vtkbool  
-> Therefore, please select the correct platform for the conda environment like this example for mac: `conda create -n hapticHarnessGenerator python=3.9 --platform osx-64`
+> Therefore, please select the correct platform for the conda environment like this example for mac: `conda create -n hapticHarnessGenerator python=3.9 vtkbool vtk -c conda-forge --platform osx-64`
 2. Run: `conda activate hapticHarnessGenerator`
-3. Install VTKBool with: `conda install -c conda-forge vtkbool` (ensure conda-forge is in your conda config)
-4. Install the haptic harness generator with: `pip install haptic_harness_generator`
-5. Run the program from your cli with: 
+3. Install the haptic harness generator with: `pip install haptic_harness_generator`
+4. Run the program from your cli with: 
    -   `run-haptic-harness --export-dir [your absolute path]`
    -   Ex. (for Windows) `run-haptic-harness --export-dir C:\Users\Me\Downloads` 
 
@@ -34,7 +33,7 @@ Setting up a new Conda environment through the ternminal with the correct depend
 2. In the "Generaet Tiles" tab, click "Generate Parts" to generate the .dxf and .stl files
 3. Generated files can be found in the "exports" directory
 <p align= "center">
-    <img src = "images/anatomyOfTile.jpg" alt = "Diagram view" width="76%">
+    <img src = "images/haptics.jpg" alt = "Diagram view" width="76%">
 </p>
 
 
