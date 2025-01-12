@@ -9,7 +9,7 @@ from pyvista import Camera
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 rotate_icon_path = os.path.join(current_dir, "rotateIcon.png")
-anatomy_of_tile_path = os.path.join(current_dir, "anatomyOfTile.jpg")
+anatomy_of_tile_path = os.path.join(current_dir, "haptics.jpg")
 
 
 class MyMainWindow(MainWindow):
@@ -73,6 +73,7 @@ class MyMainWindow(MainWindow):
             "Tile Parameters": [
                 "concentricPolygonRadius",
                 "tactorRadius",
+                "magnetRingRadius",
                 "numSides",
                 "foamThickness",
                 "distanceBetweenMagnetClipAndPolygonEdge",
@@ -86,7 +87,6 @@ class MyMainWindow(MainWindow):
                 "slotWidth",
                 "slotHeight",
                 "slotBorderRadius",
-                "magnetRingRadius",
                 "magnetClipThickness",
                 "magnetClipRingThickness",
                 "distanceBetweenMagnetsInClip",
@@ -138,18 +138,21 @@ class MyMainWindow(MainWindow):
 
         vbox.addWidget(self.dataValidationCheckBox)
         vbox.addWidget(self.regen_button)
-        label = QtWidgets.QLabel(self)
-        pixmap = QtGui.QPixmap(anatomy_of_tile_path)
-        scaled_pixmap = pixmap.scaledToWidth(
-            self.entryBox.width(), mode=QtCore.Qt.SmoothTransformation
-        )
-        label.setPixmap(scaled_pixmap)
-        vbox.addWidget(label)
 
         label = QtWidgets.QLabel(
-            '<a href="https://github.com/HaRVI-Lab/haptic-harness" style="color: #339955;">Detailed Instructions on GitHub</a>'
+            '<a href="https://github.com/HaRVI-Lab/haptic-harness" style="color: #339955; font-size: 16px;">Instructions on GitHub</a>'
         )
+        label.setAlignment(QtCore.Qt.AlignCenter)
         label.setOpenExternalLinks(True)
+        vbox.addWidget(label)
+
+        label = QtWidgets.QLabel(self)
+        pixmap = QtGui.QPixmap(anatomy_of_tile_path)
+        pixmap.setDevicePixelRatio(2.0)
+        scaled_pixmap = pixmap.scaledToWidth(
+            self.entryBox.width() * 2, mode=QtCore.Qt.SmoothTransformation
+        )
+        label.setPixmap(scaled_pixmap)
         vbox.addWidget(label)
 
         scroll.setLayout(vbox)
