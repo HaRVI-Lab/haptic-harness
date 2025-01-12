@@ -8,7 +8,6 @@ import os
 from pyvista import Camera
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-instructions_file_path = os.path.join(current_dir, "instructions.html")
 rotate_icon_path = os.path.join(current_dir, "rotateIcon.png")
 anatomy_of_tile_path = os.path.join(current_dir, "anatomyOfTile.jpg")
 
@@ -38,9 +37,7 @@ class MyMainWindow(MainWindow):
         self.dataValidationCheckBox.setChecked(True)
         self.dataValidationCheckBox.clicked.connect(self.setDataValidation)
 
-        tab = Qt.QWidget()
-        hbox = QtWidgets.QHBoxLayout()
-        hbox.addWidget(self.paramtersPane())
+        primaryLayout.addWidget(self.paramtersPane())
         vbox = QtWidgets.QVBoxLayout()
         time1 = perf_counter()
         vbox.addWidget(self.pbar)
@@ -55,13 +52,7 @@ class MyMainWindow(MainWindow):
         reset_view.clicked.connect(self.reset_view)
         vbox.addWidget(reset_view)
         print(f"Initialization time: {perf_counter() - time1}")
-        hbox.addLayout(vbox)
-        tab.setLayout(hbox)
-
-        tabs = Qt.QTabWidget()
-        tabs.addTab(tab, "Generate Tiles")
-        tabs.addTab(self.initInstructions(), "Instructions")
-        primaryLayout.addWidget(tabs)
+        primaryLayout.addLayout(vbox)
 
         centralWidget = Qt.QWidget(objectName="totalBackground")
         centralWidget.setLayout(primaryLayout)
@@ -69,12 +60,6 @@ class MyMainWindow(MainWindow):
 
         if show:
             self.show()
-
-    def initInstructions(self):
-        view = QtWebEngineWidgets.QWebEngineView()
-        with open(instructions_file_path, "r") as instructions_file:
-            view.setHtml(instructions_file.read())
-        return view
 
     def paramtersPane(self):
         self.entryBox = QtWidgets.QScrollArea()
@@ -159,6 +144,12 @@ class MyMainWindow(MainWindow):
             self.entryBox.width(), mode=QtCore.Qt.SmoothTransformation
         )
         label.setPixmap(scaled_pixmap)
+        vbox.addWidget(label)
+
+        label = QtWidgets.QLabel(
+            '<a href="https://github.com/HaRVI-Lab/haptic-harness" style="color: #339955;">Detailed Instructions on GitHub</a>'
+        )
+        label.setOpenExternalLinks(True)
         vbox.addWidget(label)
 
         scroll.setLayout(vbox)
