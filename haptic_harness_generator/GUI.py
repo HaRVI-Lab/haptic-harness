@@ -47,6 +47,8 @@ class MyMainWindow(MainWindow):
         vbox.addWidget(self.initTilePane())
         vbox.addWidget(self.initPeripheralsPane())
         self.settings = []
+        for pl in self.plotters[:3]:
+            pl.camera_position = "yx"
         for pl in self.plotters[3:]:
             self.settings.append(pl.camera.copy())
         reset_view = QtWidgets.QPushButton("Reset View")
@@ -209,6 +211,25 @@ class MyMainWindow(MainWindow):
         return frame
 
     def reset_view(self):
+        # 2D tile components
+        centers = [
+            self.generator.tyvek_tile.center,
+            self.generator.foam.center,
+            self.generator.magnet_ring.center,
+        ]
+        bounds = self.generator.tyvek_tile.bounds
+        for i in range(3):
+            self.plotters[i].camera.focal_point = centers[i]
+            max_extent = max(
+                bounds[1] - bounds[0], bounds[3] - bounds[2], bounds[5] - bounds[4]
+            )
+            distance = max_extent * 2.5
+            self.plotters[i].camera.position = (
+                centers[i][0],
+                centers[i][1],
+                centers[i][2] + distance,
+            )
+        # 3D peripherals
         for i in range(3):
             self.plotters[i + 3].camera = self.settings[i].copy()
 
@@ -386,6 +407,7 @@ class MyMainWindow(MainWindow):
 
         self.plotters[5].clear_actors()
         self.plotters[5].add_mesh(self.generator.top_clip, color=self.interactorColor)
+        self.reset_view()
 
     def regen(self):
         messages = []
