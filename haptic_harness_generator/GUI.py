@@ -38,8 +38,20 @@ class MyMainWindow(MainWindow):
         self.dataValidationCheckBox.clicked.connect(self.setDataValidation)
 
         primaryLayout.addWidget(self.paramtersPane())
+        primaryLayout.addWidget(self.objectsPane(), stretch=4)
+
+        centralWidget = Qt.QWidget(objectName="totalBackground")
+        centralWidget.setLayout(primaryLayout)
+        self.setCentralWidget(centralWidget)
+
+        if show:
+            self.show()
+
+    def objectsPane(self):
+        scroll_area = QtWidgets.QScrollArea()
+        temp = QtWidgets.QWidget()
+
         vbox = QtWidgets.QVBoxLayout()
-        time1 = perf_counter()
         vbox.addWidget(self.pbar)
         vbox.addWidget(self.initTilePane())
         vbox.addWidget(self.initPeripheralsPane())
@@ -51,15 +63,17 @@ class MyMainWindow(MainWindow):
         reset_view = QtWidgets.QPushButton("Reset View")
         reset_view.clicked.connect(self.reset_view)
         vbox.addWidget(reset_view)
-        print(f"Initialization time: {perf_counter() - time1}")
-        primaryLayout.addLayout(vbox)
 
-        centralWidget = Qt.QWidget(objectName="totalBackground")
-        centralWidget.setLayout(primaryLayout)
-        self.setCentralWidget(centralWidget)
+        temp.setLayout(vbox)
 
-        if show:
-            self.show()
+        scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        scroll_area.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setWidget(temp)
+        return scroll_area
 
     def paramtersPane(self):
         self.entryBox = QtWidgets.QScrollArea()
@@ -92,9 +106,18 @@ class MyMainWindow(MainWindow):
                 "distanceBetweenMagnetsInClip",
                 "distanceBetweenMagnetClipAndSlot",
             ],
+            "Mount Parameters": [
+                "mountRadius",
+                "mountHeight",
+                "mountShellThickness",
+                "mountBottomAngleOpening",
+                "mountTopAngleOpening",
+                "brim",
+            ],
         }
 
         unitless = ["numMangetsInRing", "numSides"]
+        radians = ["mountBottomAngleOpening", "mountTopAngleOpening"]
         for header, params in parameter_attributes.items():
             temp_box = QtWidgets.QVBoxLayout()
             temp_box.setAlignment(QtCore.Qt.AlignVCenter)
@@ -107,7 +130,11 @@ class MyMainWindow(MainWindow):
                 formattedAttributeName = re.sub(
                     r"(?<!^)(?=[A-Z])", " ", attributeKey
                 ).title()
-                if attributeKey not in unitless:
+                if attributeKey in radians:
+                    formattedAttributeName += " (radians)"
+                elif attributeKey in unitless:
+                    pass
+                else:
                     formattedAttributeName += " (mm)"
                 label = QtWidgets.QLabel(formattedAttributeName)
                 if attributeKey == "numSides" or attributeKey == "numMagnetsInRing":
@@ -170,6 +197,7 @@ class MyMainWindow(MainWindow):
             section = QtWidgets.QVBoxLayout()
             interactor = QtInteractor(self.frame)
             interactor.disable()
+            interactor.interactor.setMinimumHeight(200)
             self.plotters.append(interactor)
             label = QtWidgets.QLabel(labels[i], objectName="sectionHeader")
             label.setAlignment(QtCore.Qt.AlignCenter)
@@ -224,68 +252,45 @@ class MyMainWindow(MainWindow):
                 centers[i][2] + distance,
             )
         # 3D peripherals
-        for i in range(3):
+        for i in range(4):
             self.plotters[i + 3].camera = self.settings[i].copy()
 
     def initPeripheralsPane(self):
-        plotLayout = Qt.QHBoxLayout()
 
-        section = QtWidgets.QVBoxLayout()
-        self.plotters.append(QtInteractor(self.frame))
-        label = QtWidgets.QLabel("Base", objectName="sectionHeader")
-        label.setAlignment(QtCore.Qt.AlignCenter)
-        section.addWidget(label)
-        section.addWidget(self.plotters[3].interactor)
-        frame = Qt.QFrame(objectName="sectionFrame")
-        frame.setFrameShape(Qt.QFrame.StyledPanel)
-        frame.setLayout(section)
-        plotLayout.addWidget(frame)
-        self.plotters[3].add_mesh(self.generator.base, color=self.interactorColor)
-        self.plotters[3].add_logo_widget(
-            rotate_icon_path,
-            position=(0.05, 0.05),
-            size=(0.1, 0.1),
-        )
+        plotLayout = Qt.QVBoxLayout()
+        subPlotLayout = Qt.QHBoxLayout()
 
-        section = QtWidgets.QVBoxLayout()
-        self.plotters.append(QtInteractor(self.frame))
-        label = QtWidgets.QLabel("Bottom Clip", objectName="sectionHeader")
-        label.setAlignment(QtCore.Qt.AlignCenter)
-        section.addWidget(label)
-        section.addWidget(self.plotters[4].interactor)
-        frame = Qt.QFrame(objectName="sectionFrame")
-        frame.setFrameShape(Qt.QFrame.StyledPanel)
-        frame.setLayout(section)
-        plotLayout.addWidget(frame)
-        self.plotters[4].add_mesh(
-            self.generator.bottom_clip, color=self.interactorColor
-        )
-        self.plotters[4].add_logo_widget(
-            rotate_icon_path,
-            position=(0.05, 0.05),
-            size=(0.1, 0.1),
-        )
+        labels = ["Base", "Bottom Clip", "Top Clip", "Mount"]
 
-        section = QtWidgets.QVBoxLayout()
-        self.plotters.append(QtInteractor(self.frame))
-        label = QtWidgets.QLabel("Top Clip", objectName="sectionHeader")
-        label.setAlignment(QtCore.Qt.AlignCenter)
-        section.addWidget(label)
-        section.addWidget(self.plotters[5].interactor)
-        frame = Qt.QFrame(objectName="sectionFrame")
-        frame.setFrameShape(Qt.QFrame.StyledPanel)
-        frame.setLayout(section)
-        plotLayout.addWidget(frame)
-        self.plotters[5].add_mesh(self.generator.top_clip, color=self.interactorColor)
-        self.plotters[5].add_logo_widget(
-            rotate_icon_path,
-            position=(0.05, 0.05),
-            size=(0.1, 0.1),
-        )
+        for i in range(2):
+            subPlotLayout = Qt.QHBoxLayout()
+            for j in range(2):
+                section = QtWidgets.QVBoxLayout()
+                interactor = QtInteractor(self.frame)
+                self.plotters.append(interactor)
+                label = QtWidgets.QLabel(labels[i * 2 + j], objectName="sectionHeader")
+                label.setAlignment(QtCore.Qt.AlignCenter)
+                section.addWidget(label)
+                section.addWidget(self.plotters[-1].interactor)
+                frame = Qt.QFrame(objectName="sectionFrame")
+                frame.setFrameShape(Qt.QFrame.StyledPanel)
+                frame.setLayout(section)
+                subPlotLayout.addWidget(frame)
+                self.plotters[-1].add_mesh(
+                    self.generator.generatedObjects[i * 2 + j + 3],
+                    color=self.interactorColor,
+                )
+                self.plotters[-1].add_logo_widget(
+                    rotate_icon_path,
+                    position=(0.05, 0.05),
+                    size=(0.1, 0.1),
+                )
+            plotLayout.addLayout(subPlotLayout)
 
         frame = Qt.QFrame(objectName="sectionFrame")
         frame.setFrameShape(Qt.QFrame.StyledPanel)
         frame.setLayout(plotLayout)
+
         return frame
 
     def setGeneratorAttribute(self, attrName, val):
@@ -296,45 +301,22 @@ class MyMainWindow(MainWindow):
 
     def grayOutPlotters(self):
         opacity = 0.7
-        self.plotters[0].clear_actors()
-        self.plotters[0].add_mesh(
-            self.generator.tyvek_tile,
-            show_edges=True,
-            line_width=3,
-            opacity=opacity,
-            color=self.grayColor,
-        )
-        self.plotters[1].clear_actors()
-        self.plotters[1].add_mesh(
-            self.generator.foam,
-            show_edges=True,
-            line_width=3,
-            opacity=opacity,
-            color=self.grayColor,
-        )
-        self.plotters[2].clear_actors()
-        self.plotters[2].add_mesh(
-            self.generator.magnet_ring,
-            show_edges=True,
-            line_width=3,
-            opacity=opacity,
-            color=self.grayColor,
-        )
-
-        self.plotters[3].clear_actors()
-        self.plotters[3].add_mesh(
-            self.generator.base, color=self.grayColor, opacity=opacity
-        )
-
-        self.plotters[4].clear_actors()
-        self.plotters[4].add_mesh(
-            self.generator.bottom_clip, color=self.grayColor, opacity=opacity
-        )
-
-        self.plotters[5].clear_actors()
-        self.plotters[5].add_mesh(
-            self.generator.top_clip, color=self.grayColor, opacity=opacity
-        )
+        for i, pl in enumerate(self.plotters[:3]):
+            pl.clear_actors()
+            pl.add_mesh(
+                self.generator.generatedObjects[i],
+                show_edges=True,
+                line_width=3,
+                opacity=opacity,
+                color=self.grayColor,
+            )
+        for i, pl in enumerate(self.plotters[3:]):
+            pl.clear_actors()
+            pl.add_mesh(
+                self.generator.generatedObjects[i + 3],
+                opacity=opacity,
+                color=self.grayColor,
+            )
 
     def setDataValidation(self, state):
         if not self.dataValidationCheckBox.isChecked():
@@ -361,7 +343,8 @@ class MyMainWindow(MainWindow):
             4: "Generating base",
             5: "Generating bottom clip",
             6: "Generating top clip",
-            7: "Generation complete",
+            7: "Generating mount",
+            8: "Generation complete",
         }
         self.pbar.setValue(value / len(progress_labels) * 100)
         self.pbar.setFormat(progress_labels[value])
@@ -369,38 +352,20 @@ class MyMainWindow(MainWindow):
     def task_finished(self):
         self.regen_button.setEnabled(True)
         self.regen_button.setStyleSheet("background-color: #333333")
-        self.plotters[0].clear_actors()
-        self.plotters[0].add_mesh(
-            self.generator.tyvek_tile,
-            show_edges=True,
-            line_width=3,
-            color=self.interactorColor,
-        )
-        self.plotters[1].clear_actors()
-        self.plotters[1].add_mesh(
-            self.generator.foam,
-            show_edges=True,
-            line_width=3,
-            color=self.interactorColor,
-        )
-        self.plotters[2].clear_actors()
-        self.plotters[2].add_mesh(
-            self.generator.magnet_ring,
-            show_edges=True,
-            line_width=3,
-            color=self.interactorColor,
-        )
+        for i, pl in enumerate(self.plotters[:3]):
+            pl.clear_actors()
+            pl.add_mesh(
+                self.generator.generatedObjects[i],
+                show_edges=True,
+                line_width=3,
+                color=self.interactorColor,
+            )
+        for i, pl in enumerate(self.plotters[3:]):
+            pl.clear_actors()
+            pl.add_mesh(
+                self.generator.generatedObjects[i + 3], color=self.interactorColor
+            )
 
-        self.plotters[3].clear_actors()
-        self.plotters[3].add_mesh(self.generator.base, color=self.interactorColor)
-
-        self.plotters[4].clear_actors()
-        self.plotters[4].add_mesh(
-            self.generator.bottom_clip, color=self.interactorColor
-        )
-
-        self.plotters[5].clear_actors()
-        self.plotters[5].add_mesh(self.generator.top_clip, color=self.interactorColor)
         self.reset_view()
 
     def regen(self):

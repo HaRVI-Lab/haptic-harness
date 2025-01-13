@@ -1,6 +1,7 @@
 from logging import currentframe
 from PyQt5.QtCore import ws
 from ezdxf.layouts import base
+from ezdxf.math.bulge import angle
 import numpy as np
 from numpy._core.defchararray import lower
 import pyvista as pv
@@ -48,18 +49,45 @@ class Generator(QRunnable):
         self.distanceBetweenMagnetClipAndSlot = 3
         self.foamThickness = 1
 
+        self.mountRadius = 13
+        self.mountHeight = 10
+        self.mountShellThickness = 2
+        self.mountBottomAngleOpening = np.pi / 3
+        self.mountTopAngleOpening = np.pi / 4
+        self.brim = 3
+
         self.tyvek_tile = self.generateTyvekTile()
         self.foam = self.generateFoam()
         self.magnet_ring = self.generateMagnetRing()
         self.base = self.generateBase()
         self.bottom_clip = self.generateBottomClip()
         self.top_clip = self.generateTopClip()
+        self.mount = self.generateMount()
+
+        self.generatedObjects = [
+            self.tyvek_tile,
+            self.foam,
+            self.magnet_ring,
+            self.base,
+            self.bottom_clip,
+            self.top_clip,
+            self.mount,
+        ]
 
         # Shared signal for progress bar
         self.signals = Signals()
 
     def run(self):
         self.regen()
+        self.generatedObjects = [
+            self.tyvek_tile,
+            self.foam,
+            self.magnet_ring,
+            self.base,
+            self.bottom_clip,
+            self.top_clip,
+            self.mount,
+        ]
         self.signals.finished.emit()
 
     def regen(self):
@@ -77,6 +105,8 @@ class Generator(QRunnable):
         self.signals.progress.emit(6)
         self.top_clip = self.generateTopClip()
         self.signals.progress.emit(7)
+        self.mount = self.generateMount()
+        self.signals.progress.emit(8)
         print(perf_counter() - time1)
 
     def validate(self):
@@ -87,13 +117,21 @@ class Generator(QRunnable):
             messages.append("numSides must be between 2 and 8 inclusive")
 
         for attr, val in vars(self).items():
-            if attr != "userDir" and (val == 0 or val == None):
-                messages.append(f"{attr} must be some non-zero value")
+            if attr != "userDir" and (val <= 0 or val == None):
+                messages.append(f"{attr} must be some positive non-zero value")
 
         if self.tactorRadius >= self.concentricPolygonRadius:
             messages.append(
                 "The tactorRadius is too large for the concentricPolygonRadius"
             )
+        if self.mountRadius > self.magnetRingRadius - self.magnetRadius - tolerance:
+            messages.append(
+                "The mountRadius is too large for the magnetRingRadius and magnetRadius"
+            )
+        if self.mountBottomAngleOpening >= 3 * np.pi / 2:
+            messages.append("the mountBottomAngleOpening must be less than 3 * PI / 2")
+        if self.mountTopAngleOpening > 3 * np.pi / 2:
+            messages.append("the mountTopAngleOpening must be less than 3 * PI / 2")
         if self.distanceBetweenMagnetsInClip < 2 * self.magnetRadius + tolerance:
             messages.append(
                 "The distanceBetweenMagnetsInClip and magnetRadius are incompatible; try increasing distanceBetweenMagnetClipAndSlot decreasing magnetRadius"
@@ -149,7 +187,6 @@ class Generator(QRunnable):
         phi = (np.pi * (self.numSides - 2)) / self.numSides
         theta = (np.pi - phi) / 2
         dist = np.sin(beta + theta) * hypo
-        print(f"dist: {dist} | hyp: {hypo} | b+t: {beta+theta} | x: {x} | y: {y}")
         if 2 * dist < 2 * self.slotBorderRadius + tolerance:
             messages.append(
                 f"The edges of the flaps are intersecting; try decreasing slotWidth, increasing concentricPolygonRadius, decreasing slotBorderRadius, or decreasing numSides"
@@ -732,8 +769,529 @@ class Generator(QRunnable):
         ]
         return vertices, faces
 
+    def generateMount(self):
+        base = self.genMountBlank(40).subdivide(nsub=2).compute_normals()
+        tol = 2
+        anglePoint = np.array(
+            (
+                np.cos(self.mountBottomAngleOpening / 2),
+                np.sin(self.mountBottomAngleOpening / 2),
+                self.magnetThickness / 2,
+            )
+        )
+        anglePoint1 = np.array(
+            (
+                np.cos(-self.mountBottomAngleOpening / 2),
+                np.sin(-self.mountBottomAngleOpening / 2),
+                self.magnetThickness / 2,
+            )
+        )
+        anglePointMag = np.linalg.norm(anglePoint)
+        for i in range(self.numMangetsInRing):
+            theta = 2 * np.pi / self.numMangetsInRing * i
+            if theta < self.mountBottomAngleOpening / 2 or theta > (
+                2 * np.pi - (self.mountBottomAngleOpening / 2)
+            ):
+                continue
+            magOg = (
+                self.magnetRingRadius * np.cos(theta),
+                self.magnetRingRadius * np.sin(theta),
+                self.magnetThickness / 2,
+            )
+            if theta < np.pi:
+                proj = np.dot(magOg, anglePoint) / anglePointMag
+                projPoint = proj * anglePoint / anglePointMag
+                dist = np.linalg.norm(magOg - projPoint)
+            else:
+                proj = np.dot(magOg, anglePoint1) / anglePointMag
+                projPoint = proj * anglePoint1 / anglePointMag
+                dist = np.linalg.norm(magOg - projPoint)
+            if (dist - self.magnetRadius) < tol:
+                continue
+            magnetHole = (
+                self.polygonalPrism(
+                    radius=self.magnetRadius,
+                    res=30,
+                    height=self.magnetThickness,
+                    origin=magOg,
+                )
+                .subdivide(nsub=1)
+                .compute_normals()
+            )
+            base = self.booleanOp(base, magnetHole, "difference")
+        return base
+
+    def genMountBlank(self, res):
+        thetas = np.arange(res) * 2 * np.pi / res
+        innerCircle = np.column_stack(
+            (
+                np.cos(thetas) * self.mountRadius,
+                np.sin(thetas) * self.mountRadius,
+                np.full(res, 0),
+            )
+        )
+        outerCircle = np.column_stack(
+            (
+                np.cos(thetas) * (self.mountRadius + self.mountShellThickness),
+                np.sin(thetas) * (self.mountRadius + self.mountShellThickness),
+                np.full(res, 0),
+            )
+        )
+        brimCircle = np.column_stack(
+            (
+                np.cos(thetas)
+                * (self.magnetRingRadius + self.brim + self.magnetRadius),
+                np.sin(thetas)
+                * (self.magnetRingRadius + self.brim + self.magnetRadius),
+                np.full(res, 0),
+            )
+        )
+        outerCircleOffset = np.column_stack(
+            (
+                np.cos(thetas) * (self.mountRadius + self.mountShellThickness),
+                np.sin(thetas) * (self.mountRadius + self.mountShellThickness),
+                np.full(res, self.magnetThickness + self.mountShellThickness),
+            )
+        )
+        brimCircleOffset = np.column_stack(
+            (
+                np.cos(thetas)
+                * (self.magnetRingRadius + self.brim + self.magnetRadius),
+                np.sin(thetas)
+                * (self.magnetRingRadius + self.brim + self.magnetRadius),
+                np.full(res, self.magnetThickness + self.mountShellThickness),
+            )
+        )
+        innerCircleOffset = np.column_stack(
+            (
+                np.cos(thetas) * self.mountRadius,
+                np.sin(thetas) * self.mountRadius,
+                np.full(res, self.magnetThickness + self.mountShellThickness),
+            )
+        )
+        topInnerCircle = np.column_stack(
+            (
+                np.cos(thetas) * self.mountRadius,
+                np.sin(thetas) * self.mountRadius,
+                np.full(res, self.mountHeight + self.mountShellThickness),
+            )
+        )
+        topOuterCircle = np.column_stack(
+            (
+                np.cos(thetas) * (self.mountRadius + self.mountShellThickness),
+                np.sin(thetas) * (self.mountRadius + self.mountShellThickness),
+                np.full(res, self.mountHeight + self.mountShellThickness),
+            )
+        )
+        topInnerCircleBottom = np.column_stack(
+            (
+                np.cos(thetas) * self.mountRadius,
+                np.sin(thetas) * self.mountRadius,
+                np.full(res, self.mountHeight),
+            )
+        )
+        bottomCenter = np.array((0, 0, self.mountHeight))
+        topCenter = np.array((0, 0, self.mountHeight + self.mountShellThickness))
+        verts = np.vstack(
+            (
+                outerCircle,
+                brimCircle,
+                outerCircleOffset,
+                brimCircleOffset,
+                innerCircle,
+                innerCircleOffset,
+                topOuterCircle,
+                topInnerCircle,
+                topInnerCircleBottom,
+                bottomCenter,
+                topCenter,
+            )
+        )
+        totalFaces = []
+
+        startIndex = int(
+            np.ceil((self.mountBottomAngleOpening / 2) / (2 * np.pi / res))
+        )
+        endIndex = res - startIndex
+
+        brimIdxOffset = res * 2
+        brimEdgeOffset = res
+        innerCircleOffset = res * 4
+        offsetTopBrim = res * 2
+        offsetTopOuter = res * 6
+        offsetTopInnerBottom = res * 8
+        offsetInnerCircleOffset = res * 5
+        offsetTopInner = res * 7
+
+        # brim
+        if self.mountBottomAngleOpening != 0:
+            for i in range(startIndex, endIndex):
+                # bottom of brim
+                totalFaces.append((3, i, (i + 1) % res, i + res))
+                totalFaces.append((3, i + res, (i + 1) % res + res, (i + 1) % res))
+
+                # top of brim
+                totalFaces.append(
+                    (
+                        3,
+                        i + brimIdxOffset,
+                        (i + 1) % res + brimIdxOffset,
+                        i + res + brimIdxOffset,
+                    )
+                )
+                totalFaces.append(
+                    (
+                        3,
+                        i + res + brimIdxOffset,
+                        (i + 1) % res + res + brimIdxOffset,
+                        (i + 1) % res + brimIdxOffset,
+                    )
+                )
+
+                # inner bottom ring
+                totalFaces.append((3, i, i + 1, i + innerCircleOffset))
+                totalFaces.append(
+                    (3, i + innerCircleOffset, i + 1 + innerCircleOffset, i + 1)
+                )
+
+                # brim outer edge
+                totalFaces.append(
+                    (
+                        3,
+                        i + brimEdgeOffset,
+                        (i + 1) % res + brimEdgeOffset,
+                        i + brimIdxOffset + brimEdgeOffset,
+                    )
+                )
+                totalFaces.append(
+                    (
+                        3,
+                        i + brimIdxOffset + brimEdgeOffset,
+                        i + 1 + brimIdxOffset + brimEdgeOffset,
+                        i + 1 + brimEdgeOffset,
+                    )
+                )
+
+                # brim inner edge
+                totalFaces.append(
+                    (
+                        3,
+                        i + innerCircleOffset,
+                        i + 1 + innerCircleOffset,
+                        i + innerCircleOffset + res,
+                    )
+                )
+                totalFaces.append(
+                    (
+                        3,
+                        i + innerCircleOffset + res,
+                        i + 1 + innerCircleOffset + res,
+                        i + 1 + innerCircleOffset,
+                    )
+                )
+
+            totalFaces.append((3, startIndex, startIndex + res, startIndex + res * 2))
+            totalFaces.append(
+                (3, startIndex + res * 2, startIndex + res * 3, startIndex + res)
+            )
+            totalFaces.append((3, endIndex, endIndex + res, endIndex + res * 2))
+            totalFaces.append(
+                (3, endIndex + res * 2, endIndex + res * 3, endIndex + res)
+            )
+
+            totalFaces.append(
+                (3, startIndex, startIndex + res * 2, startIndex + innerCircleOffset)
+            )
+            totalFaces.append(
+                (
+                    3,
+                    startIndex + innerCircleOffset,
+                    startIndex + innerCircleOffset + res,
+                    startIndex + res * 2,
+                )
+            )
+            totalFaces.append(
+                (3, endIndex, endIndex + res * 2, endIndex + innerCircleOffset)
+            )
+            totalFaces.append(
+                (
+                    3,
+                    endIndex + innerCircleOffset,
+                    endIndex + innerCircleOffset + res,
+                    endIndex + res * 2,
+                )
+            )
+
+            # top ring of brim
+            for i in range(startIndex):
+                totalFaces.append(
+                    (
+                        3,
+                        i + offsetTopBrim,
+                        (i + 1) % res + offsetTopBrim,
+                        i + res * 3 + offsetTopBrim,
+                    )
+                )
+                totalFaces.append(
+                    (
+                        3,
+                        i + res * 3 + offsetTopBrim,
+                        (i + 1) % res + res * 3 + offsetTopBrim,
+                        (i + 1) % res + offsetTopBrim,
+                    )
+                )
+            for i in range(endIndex, res):
+                totalFaces.append(
+                    (
+                        3,
+                        i + offsetTopBrim,
+                        (i + 1) % res + offsetTopBrim,
+                        i + res * 3 + offsetTopBrim,
+                    )
+                )
+                totalFaces.append(
+                    (
+                        3,
+                        i + res * 3 + offsetTopBrim,
+                        (i + 1) % res + res * 3 + offsetTopBrim,
+                        (i + 1) % res + offsetTopBrim,
+                    )
+                )
+        else:
+            for i in range(res):
+                # bottom of brim
+                totalFaces.append((3, i, (i + 1) % res, i + res))
+                totalFaces.append((3, i + res, (i + 1) % res + res, (i + 1) % res))
+
+                # top of brim
+                totalFaces.append(
+                    (
+                        3,
+                        i + brimIdxOffset,
+                        (i + 1) % res + brimIdxOffset,
+                        i + res + brimIdxOffset,
+                    )
+                )
+                totalFaces.append(
+                    (
+                        3,
+                        i + res + brimIdxOffset,
+                        (i + 1) % res + res + brimIdxOffset,
+                        (i + 1) % res + brimIdxOffset,
+                    )
+                )
+
+                # inner bottom ring
+                totalFaces.append((3, i, (i + 1) % res, i + innerCircleOffset))
+                totalFaces.append(
+                    (
+                        3,
+                        i + innerCircleOffset,
+                        (i + 1) % res + innerCircleOffset,
+                        (i + 1) % res,
+                    )
+                )
+
+                # brim outer edge
+                totalFaces.append(
+                    (
+                        3,
+                        i + brimEdgeOffset,
+                        (i + 1) % res + brimEdgeOffset,
+                        i + brimIdxOffset + brimEdgeOffset,
+                    )
+                )
+                totalFaces.append(
+                    (
+                        3,
+                        i + brimIdxOffset + brimEdgeOffset,
+                        (i + 1) % res + brimIdxOffset + brimEdgeOffset,
+                        (i + 1) % res + brimEdgeOffset,
+                    )
+                )
+
+                # brim inner edge
+                totalFaces.append(
+                    (
+                        3,
+                        i + innerCircleOffset,
+                        (i + 1) % res + innerCircleOffset,
+                        i + innerCircleOffset + res,
+                    )
+                )
+                totalFaces.append(
+                    (
+                        3,
+                        i + innerCircleOffset + res,
+                        (i + 1) % res + innerCircleOffset + res,
+                        (i + 1) % res + innerCircleOffset,
+                    )
+                )
+
+        # top cylindrical portion
+        for i in range(res):
+            # outer wall
+            totalFaces.append(
+                (
+                    3,
+                    i + offsetTopBrim,
+                    (i + 1) % res + offsetTopBrim,
+                    i + offsetTopOuter,
+                )
+            )
+            totalFaces.append(
+                (
+                    3,
+                    i + offsetTopOuter,
+                    (i + 1) % res + offsetTopOuter,
+                    (i + 1) % res + offsetTopBrim,
+                )
+            )
+
+            # inner wall
+            totalFaces.append(
+                (
+                    3,
+                    i + offsetInnerCircleOffset,
+                    (i + 1) % res + offsetInnerCircleOffset,
+                    i + offsetTopInnerBottom,
+                )
+            )
+            totalFaces.append(
+                (
+                    3,
+                    i + offsetTopInnerBottom,
+                    (i + 1) % res + offsetTopInnerBottom,
+                    (i + 1) % res + offsetInnerCircleOffset,
+                )
+            )
+
+            # top outer room
+            totalFaces.append(
+                (
+                    3,
+                    i + offsetTopOuter,
+                    (i + 1) % res + offsetTopOuter,
+                    i + offsetTopInner,
+                )
+            )
+            totalFaces.append(
+                (
+                    3,
+                    i + offsetTopInner,
+                    (i + 1) % res + offsetTopInner,
+                    (i + 1) % res + offsetTopOuter,
+                )
+            )
+
+        startIndex = int(np.ceil((self.mountTopAngleOpening / 2) / (2 * np.pi / res)))
+        endIndex = res - startIndex
+        offsetBottomCenter = len(verts) - 2
+        offsetTopCenter = len(verts) - 1
+        if self.mountTopAngleOpening != 0:
+            for i in range(startIndex, endIndex):
+                # bottom face
+                totalFaces.append(
+                    (
+                        3,
+                        i + offsetTopInnerBottom,
+                        (i + 1) % res + offsetTopInnerBottom,
+                        offsetBottomCenter,
+                    )
+                )
+                # top face
+                totalFaces.append(
+                    (
+                        3,
+                        i + offsetTopInner,
+                        (i + 1) % res + offsetTopInner,
+                        offsetTopCenter,
+                    )
+                )
+
+            for i in range(startIndex):
+                totalFaces.append(
+                    (
+                        3,
+                        i + offsetTopInnerBottom,
+                        (i + 1) % res + offsetTopInnerBottom,
+                        i + offsetTopInner,
+                    )
+                )
+                totalFaces.append(
+                    (
+                        3,
+                        i + offsetTopInner,
+                        (i + 1) % res + offsetTopInner,
+                        (i + 1) % res + offsetTopInnerBottom,
+                    )
+                )
+            for i in range(endIndex, res):
+                totalFaces.append(
+                    (
+                        3,
+                        i + offsetTopInnerBottom,
+                        (i + 1) % res + offsetTopInnerBottom,
+                        i + offsetTopInner,
+                    )
+                )
+                totalFaces.append(
+                    (
+                        3,
+                        i + offsetTopInner,
+                        (i + 1) % res + offsetTopInner,
+                        (i + 1) % res + offsetTopInnerBottom,
+                    )
+                )
+
+            totalFaces.append(
+                (
+                    3,
+                    offsetBottomCenter,
+                    startIndex + offsetTopInnerBottom,
+                    startIndex + offsetTopInner,
+                )
+            )
+            totalFaces.append(
+                (3, startIndex + offsetTopInner, offsetTopCenter, offsetBottomCenter)
+            )
+
+            totalFaces.append(
+                (
+                    3,
+                    offsetBottomCenter,
+                    endIndex + offsetTopInnerBottom,
+                    endIndex + offsetTopInner,
+                )
+            )
+            totalFaces.append(
+                (3, endIndex + offsetTopInner, offsetTopCenter, offsetBottomCenter)
+            )
+        else:
+            for i in range(res):
+                # bottom face
+                totalFaces.append(
+                    (
+                        3,
+                        i + offsetTopInnerBottom,
+                        (i + 1) % res + offsetTopInnerBottom,
+                        offsetBottomCenter,
+                    )
+                )
+                # top face
+                totalFaces.append(
+                    (
+                        3,
+                        i + offsetTopInner,
+                        (i + 1) % res + offsetTopInner,
+                        offsetTopCenter,
+                    )
+                )
+
+        mesh = pv.PolyData(verts, totalFaces)
+        return mesh
+
     def generateTopClip(self):
-        time1 = perf_counter()
         # the origin centers at the mid point of the line connecting the two magnets
         origin = np.array((0, 0, 0))
         width = (
