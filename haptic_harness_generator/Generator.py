@@ -112,12 +112,36 @@ class Generator(QRunnable):
     def validate(self):
         messages = []
         tolerance = 1
+        validatable = [
+            "concentricPolygonRadius",
+            "tactorRadius",
+            "numSides",
+            "slotWidth",
+            "slotHeight",
+            "slotBorderRadius",
+            "magnetRadius",
+            "magnetThickness",
+            "magnetRingRadius",
+            "numMangetsInRing",
+            "magnetClipThickness",
+            "magnetClipRingThickness",
+            "distanceBetweenMagnetsInClip",
+            "distanceBetweenMagnetClipAndPolygonEdge",
+            "distanceBetweenMagnetClipAndSlot",
+            "foamThickness",
+            "mountRadius",
+            "mountHeight",
+            "mountShellThickness",
+            "mountBottomAngleOpening",
+            "mountTopAngleOpening",
+            "brim",
+        ]
 
         if self.numSides < 2 or self.numSides > 8:
             messages.append("numSides must be between 2 and 8 inclusive")
 
         for attr, val in vars(self).items():
-            if attr != "userDir" and (val <= 0 or val == None):
+            if attr in validatable and (val <= 0 or val == None):
                 messages.append(f"{attr} must be some positive non-zero value")
 
         if self.tactorRadius >= self.concentricPolygonRadius:
@@ -223,6 +247,13 @@ class Generator(QRunnable):
         else:
             if attrName == "numSides" or attrName == "numMangetsInRing":
                 setattr(self, attrName, int(val))
+            elif (
+                attrName == "mountBottomAngleOpening"
+                or attrName == "mountTopAngleOpening"
+            ):
+                setattr(
+                    self, attrName, float(val) * np.pi / 180
+                )  # convert from degrees to radians
             else:
                 setattr(self, attrName, float(val))
 

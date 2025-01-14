@@ -6,6 +6,7 @@ from time import perf_counter
 import re
 import os
 from pyvista import Camera
+import numpy as np
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 rotate_icon_path = os.path.join(current_dir, "rotateIcon.png")
@@ -116,8 +117,30 @@ class MyMainWindow(MainWindow):
             ],
         }
 
+        indexed_attrs = {
+            "concentricPolygonRadius": "1",
+            "tactorRadius": "2",
+            "magnetRingRadius": "3",
+            "distanceBetweenMagnetClipAndPolygonEdge": "4",
+            "magnetRadius": "5",
+            "slotWidth": "6",
+            "slotHeight": "7",
+            "slotBorderRadius": "8",
+            "magnetClipThickness": "9",
+            "magnetClipRingThickness": "10",
+            "distanceBetweenMagnetsInClip": "11",
+            "distanceBetweenMagnetClipAndSlot": "12",
+            "mountRadius": "13",
+            "mountHeight": "14",
+            "mountShellThickness": "15",
+            "mountBottomAngleOpening": "16",
+            "mountTopAngleOpening": "17",
+            "brim": "18",
+        }
+
         unitless = ["numMangetsInRing", "numSides"]
-        radians = ["mountBottomAngleOpening", "mountTopAngleOpening"]
+        degrees = ["mountBottomAngleOpening", "mountTopAngleOpening"]
+        counter = 0
         for header, params in parameter_attributes.items():
             temp_box = QtWidgets.QVBoxLayout()
             temp_box.setAlignment(QtCore.Qt.AlignVCenter)
@@ -130,8 +153,12 @@ class MyMainWindow(MainWindow):
                 formattedAttributeName = re.sub(
                     r"(?<!^)(?=[A-Z])", " ", attributeKey
                 ).title()
-                if attributeKey in radians:
-                    formattedAttributeName += " (radians)"
+                if attributeKey in indexed_attrs.keys():
+                    formattedAttributeName = (
+                        f"[{indexed_attrs[attributeKey]}] " + formattedAttributeName
+                    )
+                if attributeKey in degrees:
+                    formattedAttributeName += " (degrees)"
                 elif attributeKey in unitless:
                     pass
                 else:
@@ -145,6 +172,17 @@ class MyMainWindow(MainWindow):
                         )
                     )
                     le.setText(str(attributeVal))
+                elif (
+                    attributeKey == "mountBottomAngleOpening"
+                    or attributeKey == "mountTopAngleOpening"
+                ):
+                    le = QtWidgets.QLineEdit()
+                    le.setValidator(
+                        QtGui.QRegularExpressionValidator(
+                            QtCore.QRegularExpression("^\d+(\.\d+)?$")
+                        )
+                    )
+                    le.setText(str(round(attributeVal * 180 / np.pi, 2)))
                 else:
                     le = QtWidgets.QLineEdit()
                     le.setValidator(
