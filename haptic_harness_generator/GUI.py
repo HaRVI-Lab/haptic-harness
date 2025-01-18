@@ -187,7 +187,6 @@ class MyMainWindow(MainWindow):
                 label = QtWidgets.QLabel(formattedAttributeName)
                 label.setMaximumWidth(300)
                 text_width = label.fontMetrics().boundingRect(label.text()).width()
-                print(text_width)
                 if text_width > 250:
                     label.setFixedHeight(50)
                 label.setWordWrap(True)
