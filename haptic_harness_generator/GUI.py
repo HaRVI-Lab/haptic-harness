@@ -26,6 +26,7 @@ class MyMainWindow(MainWindow):
         self.frame = QtWidgets.QFrame()
         self.plotters = []
         self.regen_button = QtWidgets.QPushButton("Generate Parts")
+        self.regen_button.setFixedWidth(400)
         self.regen_button.clicked.connect(self.regen)
         self.pbar = QtWidgets.QProgressBar(self)
         self.pbar.setFormat("Initialized")
@@ -39,6 +40,7 @@ class MyMainWindow(MainWindow):
         self.dataValidationCheckBox.clicked.connect(self.setDataValidation)
 
         primaryLayout.addWidget(self.paramtersPane())
+        primaryLayout.addWidget(self.createDiagram())
         primaryLayout.addWidget(self.objectsPane(), stretch=4)
 
         centralWidget = Qt.QWidget(objectName="totalBackground")
@@ -76,12 +78,32 @@ class MyMainWindow(MainWindow):
         scroll_area.setWidget(temp)
         return scroll_area
 
+    def createDiagram(self):
+        scroll_area = QtWidgets.QScrollArea()
+
+        label = QtWidgets.QLabel(self)
+        pixmap = QtGui.QPixmap(anatomy_of_tile_path)
+        pixmap.setDevicePixelRatio(2.0)
+        scaled_pixmap = pixmap.scaledToWidth(
+            self.entryBox.width() * 1.5, mode=QtCore.Qt.SmoothTransformation
+        )
+        label.setPixmap(scaled_pixmap)
+
+        scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        scroll_area.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setWidget(label)
+        return scroll_area
+
     def paramtersPane(self):
         self.entryBox = QtWidgets.QScrollArea()
         scroll = QtWidgets.QWidget()
 
         vbox = QtWidgets.QVBoxLayout()
-        vbox.setContentsMargins(20, 20, 40, 20)
+        vbox.setContentsMargins(20, 20, 30, 20)
 
         attributes = self.generator.__dict__
         parameter_attributes = {
@@ -140,7 +162,6 @@ class MyMainWindow(MainWindow):
 
         unitless = ["numMangetsInRing", "numSides"]
         degrees = ["mountBottomAngleOpening", "mountTopAngleOpening"]
-        counter = 0
         for header, params in parameter_attributes.items():
             temp_box = QtWidgets.QVBoxLayout()
             temp_box.setAlignment(QtCore.Qt.AlignVCenter)
@@ -164,6 +185,16 @@ class MyMainWindow(MainWindow):
                 else:
                     formattedAttributeName += " (mm)"
                 label = QtWidgets.QLabel(formattedAttributeName)
+                label.setMaximumWidth(300)
+                text_width = label.fontMetrics().boundingRect(label.text()).width()
+                print(text_width)
+                if text_width > 250:
+                    label.setFixedHeight(50)
+                label.setWordWrap(True)
+                label.setSizePolicy(
+                    QtWidgets.QSizePolicy.Preferred,  # 3) Allow vertical expansion
+                    QtWidgets.QSizePolicy.Preferred,
+                )
                 if attributeKey == "numSides" or attributeKey == "numMagnetsInRing":
                     le = QtWidgets.QLineEdit()
                     le.setValidator(
@@ -196,13 +227,14 @@ class MyMainWindow(MainWindow):
                         attributeKey, value
                     )
                 )
+                le.setFixedWidth(100)
                 hbox.addWidget(label)
                 hbox.addWidget(le)
                 temp_box.addLayout(hbox)
             vbox.addLayout(temp_box)
 
         vbox.addWidget(self.dataValidationCheckBox)
-        vbox.addWidget(self.regen_button)
+        vbox.addWidget(self.regen_button, alignment=QtCore.Qt.AlignHCenter)
 
         label = QtWidgets.QLabel(
             '<a href="https://github.com/HaRVI-Lab/haptic-harness" style="color: #339955; font-size: 16px;">Instructions on GitHub</a>'
@@ -211,21 +243,13 @@ class MyMainWindow(MainWindow):
         label.setOpenExternalLinks(True)
         vbox.addWidget(label)
 
-        label = QtWidgets.QLabel(self)
-        pixmap = QtGui.QPixmap(anatomy_of_tile_path)
-        pixmap.setDevicePixelRatio(2.0)
-        scaled_pixmap = pixmap.scaledToWidth(
-            self.entryBox.width() * 2, mode=QtCore.Qt.SmoothTransformation
-        )
-        label.setPixmap(scaled_pixmap)
-        vbox.addWidget(label)
-
         scroll.setLayout(vbox)
+        scroll.adjustSize()
         self.entryBox.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.entryBox.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.entryBox.setWidgetResizable(True)
         self.entryBox.setWidget(scroll)
-        self.entryBox.setFixedWidth(scroll.width())
+        # self.entryBox.setFixedWidth(scroll.width())
         return self.entryBox
 
     def initTilePane(self):
