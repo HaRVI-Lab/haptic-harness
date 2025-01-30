@@ -39,7 +39,7 @@ class Generator(QRunnable):
         self.magnetRadius = 5
         self.magnetThickness = 1
         self.magnetRingRadius = 20
-        self.numMangetsInRing = 6
+        self.numMagnetsInRing = 6
         self.magnetClipThickness = 1.5
         self.magnetClipRingThickness = 1.5
         self.distanceBetweenMagnetsInClip = (
@@ -56,6 +56,13 @@ class Generator(QRunnable):
         self.mountTopAngleOpening = np.pi / 4
         self.brim = 3
 
+        self.strapWidth = 10
+        self.strapThickness = 1
+        self.strapClipThickness = 1
+        self.strapClipRadius = 1
+        self.distanceBetweenStrapsInClip = 2
+        self.strapClipRim = 2
+
         self.tyvek_tile = self.generateTyvekTile()
         self.foam = self.generateFoam()
         self.magnet_ring = self.generateMagnetRing()
@@ -63,6 +70,7 @@ class Generator(QRunnable):
         self.bottom_clip = self.generateBottomClip()
         self.top_clip = self.generateTopClip()
         self.mount = self.generateMount()
+        self.strapClip = self.genStrapClip()
 
         self.generatedObjects = [
             self.tyvek_tile,
@@ -72,6 +80,7 @@ class Generator(QRunnable):
             self.bottom_clip,
             self.top_clip,
             self.mount,
+            self.strapClip,
         ]
 
         # Shared signal for progress bar
@@ -87,6 +96,7 @@ class Generator(QRunnable):
             self.bottom_clip,
             self.top_clip,
             self.mount,
+            self.strapClip,
         ]
         self.signals.finished.emit()
 
@@ -107,7 +117,8 @@ class Generator(QRunnable):
         self.signals.progress.emit(7)
         self.mount = self.generateMount()
         self.signals.progress.emit(8)
-        print(perf_counter() - time1)
+        self.strapClip = self.genStrapClip()
+        self.signals.progress.emit(9)
 
     def validate(self):
         messages = []
@@ -122,7 +133,7 @@ class Generator(QRunnable):
             "magnetRadius",
             "magnetThickness",
             "magnetRingRadius",
-            "numMangetsInRing",
+            "numMagnetsInRing",
             "magnetClipThickness",
             "magnetClipRingThickness",
             "distanceBetweenMagnetsInClip",
@@ -135,6 +146,12 @@ class Generator(QRunnable):
             "mountBottomAngleOpening",
             "mountTopAngleOpening",
             "brim",
+            "strapWidth",
+            "strapThickness",
+            "strapClipThickness",
+            "strapClipRadius",
+            "distanceBetweenStrapsInClip",
+            "strapClipRim",
         ]
 
         if self.numSides < 2 or self.numSides > 8:
@@ -216,6 +233,33 @@ class Generator(QRunnable):
                 f"The edges of the flaps are intersecting; try decreasing slotWidth, increasing concentricPolygonRadius, decreasing slotBorderRadius, or decreasing numSides"
             )
 
+        if self.strapClipRim < tolerance:
+            messages.append(
+                f"The slotClipRim is too small. Try increasing it to at least 1mm"
+            )
+        if self.strapWidth < tolerance:
+            messages.append(
+                f"The strapWidth is too small. Try increasing it to at least 1mm"
+            )
+        if self.strapThickness < tolerance:
+            messages.append(
+                f"The strapThickness is too small. Try increasing it to at least 1mm"
+            )
+        if self.strapClipThickness < tolerance:
+            messages.append(
+                f"The strapClipThickness is too small. Try increasing it to at least 1mm"
+            )
+        if self.distanceBetweenStrapsInClip < tolerance:
+            messages.append(
+                f"The distanceBetweenStrapsInClip is too small. Try increasing it to at least 1mm"
+            )
+        if self.strapClipRadius > self.strapClipRim:
+            messages.append(
+                f"The strapClipRadius is larger than the strapClipRim. Try decreasing the strapClipRadius or increasing the strapClipRim"
+            )
+        if self.numMagnetsInRing > 25:
+            messages.append(f"Set numMagnetsInRing to at most 25")
+
         return messages
 
     def booleanOp(self, obj1, obj2, opType):
@@ -245,7 +289,7 @@ class Generator(QRunnable):
         if val == "":
             setattr(self, attrName, None)
         else:
-            if attrName == "numSides" or attrName == "numMangetsInRing":
+            if attrName == "numSides" or attrName == "numMagnetsInRing":
                 setattr(self, attrName, int(val))
             elif (
                 attrName == "mountBottomAngleOpening"
@@ -480,10 +524,146 @@ class Generator(QRunnable):
         mesh.lines = pvLines
         return mesh
 
+    def genStrapClip(self):
+        # gen one face
+        slotVerts = np.array(
+            [
+                (
+                    self.strapWidth / 2,
+                    -self.distanceBetweenStrapsInClip / 2 - self.strapThickness,
+                ),
+                (self.strapWidth / 2, -self.distanceBetweenStrapsInClip / 2),
+                (self.strapWidth / 2, self.distanceBetweenStrapsInClip / 2),
+                (
+                    self.strapWidth / 2,
+                    self.distanceBetweenStrapsInClip / 2 + self.strapThickness,
+                ),
+                (
+                    -self.strapWidth / 2,
+                    self.distanceBetweenStrapsInClip / 2 + self.strapThickness,
+                ),
+                (-self.strapWidth / 2, self.distanceBetweenStrapsInClip / 2),
+                (-self.strapWidth / 2, -self.distanceBetweenStrapsInClip / 2),
+                (
+                    -self.strapWidth / 2,
+                    -self.distanceBetweenStrapsInClip / 2 - self.strapThickness,
+                ),
+            ]
+        )
+        offset = self.strapClipRim - self.strapClipRadius
+        corners = np.array(
+            (
+                (
+                    self.strapWidth / 2 + offset,
+                    -1
+                    * (
+                        self.distanceBetweenStrapsInClip / 2
+                        + self.strapThickness
+                        + offset
+                    ),
+                ),
+                (
+                    self.strapWidth / 2 + offset,
+                    (self.distanceBetweenStrapsInClip / 2 + self.strapThickness)
+                    + offset,
+                ),
+                (
+                    -1 * (self.strapWidth / 2 + offset),
+                    (self.distanceBetweenStrapsInClip / 2 + self.strapThickness)
+                    + offset,
+                ),
+                (
+                    -1 * (self.strapWidth / 2 + offset),
+                    -1
+                    * (
+                        self.distanceBetweenStrapsInClip / 2
+                        + self.strapThickness
+                        + offset
+                    ),
+                ),
+            )
+        )
+        total_verts = []
+        total_verts.extend(slotVerts.tolist())
+        res = 5
+
+        for i in range(4):
+            thetas = (np.pi / 2) / res * np.arange(res) - np.pi / 2 + np.pi / 2 * i
+            x_vals = self.strapClipRadius * np.cos(thetas)
+            y_vals = self.strapClipRadius * np.sin(thetas)
+            base = np.column_stack((x_vals, y_vals))
+            base += corners[i]
+            total_verts.extend(base.tolist())
+
+        faces = []
+        for k in range(4):
+            for i in range(res - 1):
+                faces.append(np.array((3, k * 2, i + 8 + k * res, i + 9 + k * res)))
+            faces.append(np.array((3, k * 2, k * 2 + 1, i + 9 + k * res)))
+            faces.append(np.array((3, k * 2 + 1, (k + 1) % 4 * 2, i + 9 + k * res)))
+            faces.append(
+                np.array((3, i + 9 + k * res, (k + 1) % 4 * 2, (k + 1) % 4 * res + 8))
+            )
+        faces.append(np.array((3, 1, 2, 5)))
+        faces.append(np.array((3, 5, 6, 1)))
+
+        faces_np = np.array(faces)
+        size = len(total_verts)
+        new_faces = faces_np.copy() + np.array((0, size, size, size))
+        total_faces = np.vstack((faces_np, new_faces))
+
+        edge_faces = []
+        for i in range(8, len(total_verts) - 1):
+            edge_faces.append((3, i, i + 1, i + 1 + len(total_verts)))
+            edge_faces.append((3, i + 1 + len(total_verts), i + len(total_verts), i))
+        edge_faces.append((3, len(total_verts) - 1, 8, len(total_verts) + 8))
+        edge_faces.append(
+            (3, len(total_verts) + 8, 2 * len(total_verts) - 1, len(total_verts) - 1)
+        )
+
+        # inner edge faces bottom
+        edge_faces.append((3, 0, 1, len(total_verts) + 1))
+        edge_faces.append((3, len(total_verts) + 1, len(total_verts), 0))
+
+        edge_faces.append((3, 1, 6, len(total_verts) + 6))
+        edge_faces.append((3, len(total_verts) + 6, len(total_verts) + 1, 1))
+
+        edge_faces.append((3, 6, 7, len(total_verts) + 7))
+        edge_faces.append((3, len(total_verts) + 7, len(total_verts) + 6, 6))
+
+        edge_faces.append((3, 7, 0, len(total_verts)))
+        edge_faces.append((3, len(total_verts), len(total_verts) + 7, 7))
+
+        # inner edge faces top
+        edge_faces.append((3, 2, 3, len(total_verts) + 3))
+        edge_faces.append((3, len(total_verts) + 3, len(total_verts) + 2, 2))
+
+        edge_faces.append((3, 3, 4, len(total_verts) + 4))
+        edge_faces.append((3, len(total_verts) + 4, len(total_verts) + 3, 3))
+
+        edge_faces.append((3, 4, 5, len(total_verts) + 5))
+        edge_faces.append((3, len(total_verts) + 5, len(total_verts) + 4, 4))
+
+        edge_faces.append((3, 5, 2, len(total_verts) + 2))
+        edge_faces.append((3, len(total_verts) + 2, len(total_verts) + 5, 5))
+
+        total_faces_with_edges = np.vstack((total_faces, edge_faces))
+
+        z_verts = np.column_stack((np.array(total_verts), np.zeros(len(total_verts))))
+        final_verts = np.vstack(
+            (z_verts, z_verts.copy() + np.array((0, 0, self.strapClipThickness)))
+        )
+        mesh = pv.PolyData(final_verts, total_faces_with_edges).compute_normals(
+            consistent_normals=True, auto_orient_normals=True
+        )
+
+        mesh.save(f"{self.userDir}/strapClip.stl")
+        return mesh
+
     def genMagnetHoles(self, msp, pvVerts, pvLines):
         resolution = 30
-        for i in range(self.numMangetsInRing):
-            theta = 2 * np.pi / self.numMangetsInRing * i
+        for i in range(self.numMagnetsInRing):
+            theta = 2 * np.pi / self.numMagnetsInRing * i
             offset = len(pvVerts)
             stock = np.arange(resolution)
             thetas = 2 * np.pi / resolution * stock
@@ -607,8 +787,8 @@ class Generator(QRunnable):
             .subdivide(nsub=2)
             .compute_normals()
         )
-        for i in range(self.numMangetsInRing):
-            theta = 2 * np.pi / self.numMangetsInRing * i
+        for i in range(self.numMagnetsInRing):
+            theta = 2 * np.pi / self.numMagnetsInRing * i
             ogPoint = (
                 self.magnetRingRadius * np.cos(theta),
                 self.magnetRingRadius * np.sin(theta),
@@ -818,8 +998,8 @@ class Generator(QRunnable):
             )
         )
         anglePointMag = np.linalg.norm(anglePoint)
-        for i in range(self.numMangetsInRing):
-            theta = 2 * np.pi / self.numMangetsInRing * i
+        for i in range(self.numMagnetsInRing):
+            theta = 2 * np.pi / self.numMagnetsInRing * i
             if theta < self.mountBottomAngleOpening / 2 or theta > (
                 2 * np.pi - (self.mountBottomAngleOpening / 2)
             ):
@@ -850,6 +1030,7 @@ class Generator(QRunnable):
                 .compute_normals()
             )
             base = self.booleanOp(base, magnetHole, "difference")
+        base.save(f"{self.userDir}/mount.stl")
         return base
 
     def genMountBlank(self, res):

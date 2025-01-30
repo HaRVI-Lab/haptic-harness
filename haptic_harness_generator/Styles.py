@@ -112,7 +112,7 @@ class Styles:
             background : @gray;
             border: 1px solid @borderGray;
         }
-        
+
         QScrollBar::handle::pressed {
             background : @lightGray;
         }

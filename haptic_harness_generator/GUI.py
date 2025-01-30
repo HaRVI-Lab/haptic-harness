@@ -10,7 +10,7 @@ import numpy as np
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 rotate_icon_path = os.path.join(current_dir, "rotateIcon.png")
-anatomy_of_tile_path = os.path.join(current_dir, "haptics.jpg")
+anatomy_of_tile_path = os.path.join(current_dir, "hapticsNew.jpg")
 
 
 class MyMainWindow(MainWindow):
@@ -114,7 +114,7 @@ class MyMainWindow(MainWindow):
                 "numSides",
                 "foamThickness",
                 "distanceBetweenMagnetClipAndPolygonEdge",
-                "numMangetsInRing",
+                "numMagnetsInRing",
             ],
             "Magnet Parameters": [
                 "magnetRadius",
@@ -137,6 +137,14 @@ class MyMainWindow(MainWindow):
                 "mountTopAngleOpening",
                 "brim",
             ],
+            "Strap Clip Parameters": [
+                "strapWidth",
+                "strapThickness",
+                "strapClipThickness",
+                "strapClipRadius",
+                "distanceBetweenStrapsInClip",
+                "strapClipRim",
+            ],
         }
 
         indexed_attrs = {
@@ -145,22 +153,29 @@ class MyMainWindow(MainWindow):
             "magnetRingRadius": "3",
             "distanceBetweenMagnetClipAndPolygonEdge": "4",
             "magnetRadius": "5",
-            "slotWidth": "6",
-            "slotHeight": "7",
-            "slotBorderRadius": "8",
-            "magnetClipThickness": "9",
-            "magnetClipRingThickness": "10",
-            "distanceBetweenMagnetsInClip": "11",
-            "distanceBetweenMagnetClipAndSlot": "12",
-            "mountRadius": "13",
-            "mountHeight": "14",
-            "mountShellThickness": "15",
-            "mountBottomAngleOpening": "16",
-            "mountTopAngleOpening": "17",
-            "brim": "18",
+            "magnetThickness": "6",
+            "slotWidth": "7",
+            "slotHeight": "8",
+            "slotBorderRadius": "9",
+            "magnetClipThickness": "10",
+            "magnetClipRingThickness": "11",
+            "distanceBetweenMagnetsInClip": "12",
+            "distanceBetweenMagnetClipAndSlot": "13",
+            "mountRadius": "14",
+            "mountHeight": "15",
+            "mountShellThickness": "16",
+            "mountBottomAngleOpening": "17",
+            "mountTopAngleOpening": "18",
+            "brim": "19",
+            "strapWidth": "20",
+            "strapThickness": "21",
+            "strapClipThickness": "22",
+            "strapClipRadius": "23",
+            "distanceBetweenStrapsInClip": "24",
+            "strapClipRim": "25",
         }
 
-        unitless = ["numMangetsInRing", "numSides"]
+        unitless = ["numMagnetsInRing", "numSides"]
         degrees = ["mountBottomAngleOpening", "mountTopAngleOpening"]
         for header, params in parameter_attributes.items():
             temp_box = QtWidgets.QVBoxLayout()
@@ -233,6 +248,14 @@ class MyMainWindow(MainWindow):
             vbox.addLayout(temp_box)
 
         vbox.addWidget(self.dataValidationCheckBox)
+
+        label = QtWidgets.QLabel(
+            '<p style="color: #999999; font-size: 16px; font-style: italic;">2D file type is .dxf; 3D file type is .stl</p>'
+        )
+        label.setAlignment(QtCore.Qt.AlignCenter)
+        label.setOpenExternalLinks(True)
+        vbox.addWidget(label)
+
         vbox.addWidget(self.regen_button, alignment=QtCore.Qt.AlignHCenter)
 
         label = QtWidgets.QLabel(
@@ -313,7 +336,7 @@ class MyMainWindow(MainWindow):
                 centers[i][2] + distance,
             )
         # 3D peripherals
-        for i in range(4):
+        for i in range(5):
             self.plotters[i + 3].camera = self.settings[i].copy()
 
     def initPeripheralsPane(self):
@@ -321,15 +344,17 @@ class MyMainWindow(MainWindow):
         plotLayout = Qt.QVBoxLayout()
         subPlotLayout = Qt.QHBoxLayout()
 
-        labels = ["Base", "Bottom Clip", "Top Clip", "Mount"]
+        labels = ["Base", "Bottom Clip", "Top Clip", "Mount", "Strap Clip"]
 
         for i in range(2):
             subPlotLayout = Qt.QHBoxLayout()
-            for j in range(2):
+            for j in range(3):
+                if (i * 3 + j) == 5:
+                    continue
                 section = QtWidgets.QVBoxLayout()
                 interactor = QtInteractor(self.frame)
                 self.plotters.append(interactor)
-                label = QtWidgets.QLabel(labels[i * 2 + j], objectName="sectionHeader")
+                label = QtWidgets.QLabel(labels[i * 3 + j], objectName="sectionHeader")
                 label.setAlignment(QtCore.Qt.AlignCenter)
                 section.addWidget(label)
                 section.addWidget(self.plotters[-1].interactor)
@@ -338,7 +363,7 @@ class MyMainWindow(MainWindow):
                 frame.setLayout(section)
                 subPlotLayout.addWidget(frame)
                 self.plotters[-1].add_mesh(
-                    self.generator.generatedObjects[i * 2 + j + 3],
+                    self.generator.generatedObjects[i * 3 + j + 3],
                     color=self.interactorColor,
                 )
                 self.plotters[-1].add_logo_widget(
@@ -405,7 +430,8 @@ class MyMainWindow(MainWindow):
             5: "Generating bottom clip",
             6: "Generating top clip",
             7: "Generating mount",
-            8: "Generation complete",
+            8: "Generating strap clip",
+            9: "Generation complete",
         }
         self.pbar.setValue(value / len(progress_labels) * 100)
         self.pbar.setFormat(progress_labels[value])
