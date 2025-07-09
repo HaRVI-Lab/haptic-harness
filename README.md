@@ -60,3 +60,31 @@ Setting up a new Conda environment through the ternminal with the correct depend
 -   Numpy
 -   PyQT5
 -   pyvistaqt
+
+
+# Citations for Haptic Harness Generator
+
+## APA Format
+Kollannur, S. Z. G., Robertson, K., & Culbertson, H. (2025). *Haptic Harness Generator* [Computer software]. GitHub. https://github.com/HaRVI-Lab/haptic-harness
+
+## MLA Format
+Kollannur, Sandeep, Katie Robertson, and Heather Culbertson. *Haptic Harness Generator*. Computer software. GitHub, 2025. Web. https://github.com/HaRVI-Lab/haptic-harness.
+
+## Chicago Format
+Kollannur, Sandeep, Katie Robertson, and Heather Culbertson. Haptic Harness Generator. Computer software. 2025. https://github.com/HaRVI-Lab/haptic-harness.
+
+## BibTeX Format
+```bibtex
+@software{kollannur2025haptic,
+  author = {Kollannur, Sandeep and Robertson, Katie and Culbertson, Heather},
+  title = {Haptic Harness Generator},
+  year = {2025},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  url = {https://github.com/HaRVI-Lab/haptic-harness}
+}
+```
+
+## Software Citation Format
+Sandeep Kollannur, Katie Robertson, and Heather Culbertson. (2025). Haptic Harness Generator: A software to easily generate parameterized tiles for haptic harnesses. GitHub. https://github.com/HaRVI-Lab/haptic-harness
+
