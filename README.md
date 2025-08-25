@@ -20,6 +20,7 @@ Setting up a new Conda environment through the ternminal with the correct depend
 > [!WARNING]  
 > vtkbool through conda-forge is only availabe on win64, linux64, and osx64. Please see: https://github.com/zippy84/vtkbool  
 > Therefore, please select the correct platform for the conda environment like this example for mac: `conda create -n hapticHarnessGenerator python=3.9 vtkbool vtk -c conda-forge --platform osx-64`
+> You could also run `conda create -n hapticHarnessGenerator python=3.9 vtkbool vtk -c conda-forge` for other os, like linux or `conda create -n hapticHarnessGenerator python=3.9 vtkbool vtk -c conda-forge --platform osx-arm64` for Apple silicon.
 2. Run: `conda activate hapticHarnessGenerator`
 3. Install the haptic harness generator with: `pip install haptic_harness_generator`
 4. Run the program from your cli with: 
