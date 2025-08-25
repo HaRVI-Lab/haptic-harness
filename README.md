@@ -84,7 +84,7 @@ pip install haptic_harness_generator
 ### Step 7: Verify installation
 Test that everything works:
 ```bash
-python -c "from vtkbool.vtkBool import vtkPolyDataBooleanFilter; print('✓ vtkbool import working!')"
+python -c "from vtkbool.vtkBool import vtkPolyDataBooleanFilter; print('vtkbool import working')"
 ```
 
 > [!WARNING]  
