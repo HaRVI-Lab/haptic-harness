@@ -13,43 +13,97 @@ A software to easily generate parameterized tiles for haptic harnesses
 ## Getting Started
 Setting up a new Conda environment through the terminal with the correct dependencies:
 
-**IMPORTANT**: Due to package compatibility issues between different installation sources, follow these platform-specific instructions carefully:
+**IMPORTANT**: The `vtkbool` package has installation issues on most platforms. Follow these tested instructions for a working setup:
 
-### For Windows (64-bit)
-1. Create environment: `conda create -n hh-gen python=3.9 vtk -c conda-forge --platform win-64`
-2. Activate environment: `conda activate hh-gen`
-3. **Install vtkbool via pip**: `pip install vtkbool`
-4. Install the haptic harness generator: `pip install haptic_harness_generator`
+### Step 1: Remove any existing environment (if you've tried before)
+```bash
+conda deactivate
+conda remove -n hhgen --all -y
+```
 
-### For Linux (64-bit)
-1. Create environment: `conda create -n hh-gen python=3.9 vtk -c conda-forge --platform linux-64`
-2. Activate environment: `conda activate hh-gen`
-3. **Install vtkbool via pip**: `pip install vtkbool`
-4. Install the haptic harness generator: `pip install haptic_harness_generator`
+### Step 2: Create fresh environment with VTK only
 
-### For Intel Mac (64-bit)
-1. Create environment: `conda create -n hh-gen python=3.9 vtk -c conda-forge --platform osx-64`
-2. Activate environment: `conda activate hh-gen`
-3. **Install vtkbool via pip**: `pip install vtkbool`
-4. Install the haptic harness generator: `pip install haptic_harness_generator`
+#### For Windows (64-bit)
+```bash
+conda create -n hhgen python=3.9 vtk -c conda-forge --platform win-64 -y
+```
 
-### For Apple Silicon Mac (M1/M2/M3)
-1. Create environment: `conda create -n hh-gen python=3.9 vtk -c conda-forge --platform osx-arm64`
-2. Activate environment: `conda activate hh-gen`
-3. **Install vtkbool via pip**: `pip install vtkbool`
-4. Install the haptic harness generator: `pip install haptic_harness_generator`
+#### For Linux (64-bit)
+```bash
+conda create -n hhgen python=3.9 vtk -c conda-forge --platform linux-64 -y
+```
+
+#### For Intel Mac (64-bit)
+```bash
+conda create -n hhgen python=3.9 vtk -c conda-forge --platform osx-64 -y
+```
+
+#### For Apple Silicon Mac (M1/M2/M3)
+```bash
+conda create -n hhgen python=3.9 vtk -c conda-forge --platform osx-arm64 -y
+```
+
+### Step 3: Activate environment and install packages
+```bash
+conda activate hhgen
+```
+
+### Step 4: Install vtkbool using conda-forge
+```bash
+conda install vtkbool -c conda-forge -y
+```
+
+### Step 5: Create compatibility fix for import paths
+The conda-forge version uses `vtkbool.vtkbool` imports, but this application expects `vtkbool.vtkBool`. Run this compatibility fix:
+
+```bash
+python -c "
+import os
+import sys
+import vtkbool
+
+# Find the vtkbool package location
+vtkbool_path = vtkbool.__path__[0]
+vtkbool_compat = os.path.join(vtkbool_path, 'vtkBool')
+
+# Create compatibility directory and file
+os.makedirs(vtkbool_compat, exist_ok=True)
+with open(os.path.join(vtkbool_compat, '__init__.py'), 'w') as f:
+    f.write('# Compatibility shim for vtkbool import paths\\n')
+    f.write('from vtkbool.vtkbool import *\\n')
+    
+print('✓ Created vtkBool compatibility module')
+"
+```
+
+### Step 6: Install the haptic harness generator
+```bash
+pip install haptic_harness_generator
+```
+
+### Step 7: Verify installation
+Test that everything works:
+```bash
+python -c "from vtkbool.vtkBool import vtkPolyDataBooleanFilter; print('✓ vtkbool import working!')"
+```
 
 > [!WARNING]  
-> **Critical Installation Note**: Do NOT install `vtkbool` through conda-forge as it has incompatible import paths with this application. Always use `pip install vtkbool` after creating the conda environment with vtk. The conda-forge version uses `vtkbool.vtkbool` imports while this application expects `vtkbool.vtkBool` imports.
+> **Critical Installation Notes**: 
+> - The conda-forge vtkbool package uses different import paths (`vtkbool.vtkbool`) than what this application expects (`vtkbool.vtkBool`)
+> - The compatibility fix in Step 5 is **required** and must be run after installing vtkbool
+> - If you get import errors, make sure you ran Step 5 correctly
 
 > [!TIP]
-> If you're unsure of your platform, you can omit the `--platform` flag and conda will auto-detect, but you must still install vtkbool via pip.
+> If you're unsure of your platform, you can omit the `--platform` flag and conda will auto-detect your system.
 
-### Running the Application
-5. Run the program from your command line with: 
-   -   `run-haptic-harness --export-dir [your absolute path]`
-   -   **Windows example**: `run-haptic-harness --export-dir C:\Users\Me\Downloads`
-   -   **Linux/Mac example**: `run-haptic-harness --export-dir ~/Downloads/hh-v1`
+### Step 8: Run the application
+```bash
+run-haptic-harness --export-dir [your absolute path]
+```
+
+**Examples:**
+- **Windows**: `run-haptic-harness --export-dir C:\Users\Me\Downloads`
+- **Linux/Mac**: `run-haptic-harness --export-dir ~/Downloads/hh-v1`
 
 ## Software Operation
 1. Change parameters in the "Generate Tiles" tab
@@ -77,7 +131,7 @@ Setting up a new Conda environment through the terminal with the correct depende
 
 ## Dependencies:
 -   Pyvista
--   vtkbool (installed via pip, not conda)
+-   vtkbool (installed via conda-forge with compatibility shim)
 -   ezdxf
 -   Numpy
 -   PyQT5
