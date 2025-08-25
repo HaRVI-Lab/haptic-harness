@@ -16,26 +16,26 @@ Setting up a new Conda environment through the terminal with the correct depende
 **IMPORTANT**: Due to package compatibility issues between different installation sources, follow these platform-specific instructions carefully:
 
 ### For Windows (64-bit)
-1. Create environment: `conda create -n hapticHarnessGenerator python=3.9 vtk -c conda-forge --platform win-64`
-2. Activate environment: `conda activate hapticHarnessGenerator`
+1. Create environment: `conda create -n hh-gen python=3.9 vtk -c conda-forge --platform win-64`
+2. Activate environment: `conda activate hh-gen`
 3. **Install vtkbool via pip**: `pip install vtkbool`
 4. Install the haptic harness generator: `pip install haptic_harness_generator`
 
 ### For Linux (64-bit)
-1. Create environment: `conda create -n hapticHarnessGenerator python=3.9 vtk -c conda-forge --platform linux-64`
-2. Activate environment: `conda activate hapticHarnessGenerator`
+1. Create environment: `conda create -n hh-gen python=3.9 vtk -c conda-forge --platform linux-64`
+2. Activate environment: `conda activate hh-gen`
 3. **Install vtkbool via pip**: `pip install vtkbool`
 4. Install the haptic harness generator: `pip install haptic_harness_generator`
 
 ### For Intel Mac (64-bit)
-1. Create environment: `conda create -n hapticHarnessGenerator python=3.9 vtk -c conda-forge --platform osx-64`
-2. Activate environment: `conda activate hapticHarnessGenerator`
+1. Create environment: `conda create -n hh-gen python=3.9 vtk -c conda-forge --platform osx-64`
+2. Activate environment: `conda activate hh-gen`
 3. **Install vtkbool via pip**: `pip install vtkbool`
 4. Install the haptic harness generator: `pip install haptic_harness_generator`
 
 ### For Apple Silicon Mac (M1/M2/M3)
-1. Create environment: `conda create -n hapticHarnessGenerator python=3.9 vtk -c conda-forge --platform osx-arm64`
-2. Activate environment: `conda activate hapticHarnessGenerator`
+1. Create environment: `conda create -n hh-gen python=3.9 vtk -c conda-forge --platform osx-arm64`
+2. Activate environment: `conda activate hh-gen`
 3. **Install vtkbool via pip**: `pip install vtkbool`
 4. Install the haptic harness generator: `pip install haptic_harness_generator`
 
