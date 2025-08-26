@@ -98,7 +98,7 @@ class Generator(QRunnable):
         self.magnet_ring = self.generateMagnetRing()
         self.base = self.generateBase()
         self.bottom_clip = self.generateBottomClip()
-        self.top_clip = self.generateTopClip()
+        self.magnet_clip = self.generateMagnetClip()
         self.mount = self.generateMount()
         self.strapClip = self.genStrapClip()
 
@@ -108,7 +108,7 @@ class Generator(QRunnable):
             self.magnet_ring,
             self.base,
             self.bottom_clip,
-            self.top_clip,
+            self.magnet_clip,
             self.mount,
             self.strapClip,
         ]
@@ -124,7 +124,7 @@ class Generator(QRunnable):
             self.magnet_ring,
             self.base,
             self.bottom_clip,
-            self.top_clip,
+            self.magnet_clip,
             self.mount,
             self.strapClip,
         ]
@@ -143,7 +143,7 @@ class Generator(QRunnable):
         self.signals.progress.emit(5)
         self.bottom_clip = self.generateBottomClip()
         self.signals.progress.emit(6)
-        self.top_clip = self.generateTopClip()
+        self.magnet_clip = self.generateMagnetClip()
         self.signals.progress.emit(7)
         self.mount = self.generateMount()
         self.signals.progress.emit(8)
@@ -1026,7 +1026,7 @@ class Generator(QRunnable):
             np.column_stack(
                 (
                     r * np.cos(thetas) + height / 2 + origin[0],
-                    r * np.sin(thetas) + origin[1] - self.magnetClipRingThickness * 2,
+                    r * np.sin(thetas) + origin[1],
                     np.full(lower_bound, origin[2]),
                 )
             ).tolist()
@@ -1058,7 +1058,7 @@ class Generator(QRunnable):
             np.column_stack(
                 (
                     -r * np.cos(thetas) - height / 2 + origin[0],
-                    r * np.sin(thetas) + origin[1] - self.magnetClipRingThickness * 2,
+                    r * np.sin(thetas) + origin[1],
                     np.full(resolution - lower_bound, origin[2]),
                 )
             ).tolist()
@@ -1593,7 +1593,7 @@ class Generator(QRunnable):
         mesh = pv.PolyData(verts, totalFaces)
         return mesh
 
-    def generateTopClip(self):
+    def generateMagnetClip(self):
         # the origin centers at the mid point of the line connecting the two magnets
         origin = np.array((0, 0, 0))
         width = (
@@ -1688,13 +1688,13 @@ class Generator(QRunnable):
             )
         )
         bottomVerts, bottomFaces = self.generateSlot(
-            slotOrigin, self.slotHeight, self.slotWidth, self.slotHeight / 2
+            slotOrigin, self.slotHeight, self.slotWidth,  0.1  # Swapped!
         )
         topHalfOrigin = slotOrigin + np.array(
             (0, 0, self.magnetClipThickness + self.magnetThickness * 2)
         )
         topVerts, topFaces = self.generateSlot(
-            topHalfOrigin, self.slotHeight, self.slotWidth, self.slotHeight / 2
+            topHalfOrigin, self.slotHeight, self.slotWidth, 0.1   # Swapped!
         )
         totalVerts = []
         totalFaces = []
@@ -1717,7 +1717,7 @@ class Generator(QRunnable):
         )
 
         base = self.booleanOp(base, slot, "difference")
-        base.save(f"{self.userDir}/topClip.stl")
+        base.save(f"{self.userDir}/magnetClip.stl")
         return base
 
 

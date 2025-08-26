@@ -547,7 +547,7 @@ class MyMainWindow(MainWindow):
         plotLayout = Qt.QVBoxLayout()
         subPlotLayout = Qt.QHBoxLayout()
 
-        labels = ["Base", "Bottom Clip", "Top Clip", "Mount", "Strap Clip"]
+        labels = ["Base", "Bottom Clip", "Magnet Clip", "Mount", "Strap Clip"]
 
         for i in range(2):
             subPlotLayout = Qt.QHBoxLayout()
@@ -633,7 +633,7 @@ class MyMainWindow(MainWindow):
             3: "Generating magnet ring",
             4: "Generating base",
             5: "Generating bottom clip",
-            6: "Generating top clip",
+            6: "Generating magnet clip",
             7: "Generating mount",
             8: "Generating strap clip",
             9: "Generation complete",
