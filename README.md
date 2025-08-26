@@ -11,7 +11,7 @@ A software to easily generate parameterized tiles for haptic harnesses
 -   Researchers can change harness parameters to meet their needs
 
 ## Getting Started
-Setting up a new Conda environment through the terminal with the correct dependencies:
+Setting up a new Conda environment through the terminal with the correct list of dependencies:
 
 **IMPORTANT**: Use this tested cross-platform approach for reliable installation on any system:
 
