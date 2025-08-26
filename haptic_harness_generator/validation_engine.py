@@ -226,37 +226,143 @@ class ValidationEngine:
                 self.affected_params.add(param)
     
     def _generate_fix_suggestions(self, config: Dict) -> List[str]:
-        """Generate intelligent fix suggestions"""
+        """Generate comprehensive fix suggestions for all error types"""
         suggestions = []
-        
+
+        # Create suggestion for every error type
+        error_suggestion_map = {
+            'below minimum': self._suggest_increase_parameter,
+            'above maximum': self._suggest_decrease_parameter,
+            'too wide for polygon': self._suggest_slot_polygon_fix,
+            'intersecting': self._suggest_clearance_fix,
+            'interference': self._suggest_interference_fix,
+            'too small': self._suggest_size_increase,
+            'below minimum tolerance': self._suggest_tolerance_fix
+        }
+
+        # Analyze each error and generate specific suggestion
+        for error in self.critical_errors:
+            suggestion_generated = False
+
+            # Check for specific error patterns
+            for pattern, suggestion_func in error_suggestion_map.items():
+                if pattern in error.lower():
+                    suggestion = suggestion_func(error, config)
+                    if suggestion:
+                        suggestions.append(suggestion)
+                        suggestion_generated = True
+                        break
+
+            # Fallback for any error without specific suggestion
+            if not suggestion_generated:
+                suggestions.append(f"For '{error[:50]}...' - try adjusting the highlighted parameters")
+
         # Analyze error patterns and provide specific fixes
         if 'slotWidth' in self.affected_params and 'concentricPolygonRadius' in self.affected_params:
             numSides = config.get('numSides', 6)
             current_slot = config.get('slotWidth', 26)
             current_radius = config.get('concentricPolygonRadius', 30)
-            
-            # Calculate safe values
-            safe_slot = 2 * current_radius * np.tan(np.pi / numSides) - 2 * self.tolerance
-            safe_radius = (current_slot + 2 * self.tolerance) / (2 * np.tan(np.pi / numSides))
-            
+
+            # Calculate safe values with tolerance and safety margin
+            theoretical_slot = 2 * current_radius * np.tan(np.pi / numSides) - 2 * self.tolerance
+            theoretical_radius = (current_slot + 2 * self.tolerance) / (2 * np.tan(np.pi / numSides))
+
+            safe_slot = self._calculate_safe_value(theoretical_slot, 'dimension')
+            safe_radius = self._calculate_safe_value(theoretical_radius, 'dimension')
+
             suggestions.append(
                 f"Quick fix options:\n"
                 f"  1. Set {ConfigurationManager.get_parameter_display('slotWidth')} to {safe_slot:.0f}mm\n"
                 f"  2. Set {ConfigurationManager.get_parameter_display('concentricPolygonRadius')} to {safe_radius:.0f}mm"
             )
-        
+
         if 'tactorRadius' in self.affected_params and 'magnetRingRadius' in self.affected_params:
             magnetRadius = config.get('magnetRadius', 5)
             magnetRingRadius = config.get('magnetRingRadius', 20)
             numSides = config.get('numSides', 6)
-            
-            safe_tactor = (magnetRingRadius - magnetRadius - self.tolerance) * np.cos(np.pi / numSides) if numSides > 2 else magnetRingRadius - magnetRadius - self.tolerance
-            safe_ring = config.get('tactorRadius', 10) + magnetRadius + self.tolerance
-            
+
+            theoretical_tactor = (magnetRingRadius - magnetRadius - self.tolerance) * np.cos(np.pi / numSides) if numSides > 2 else magnetRingRadius - magnetRadius - self.tolerance
+            theoretical_ring = config.get('tactorRadius', 10) + magnetRadius + self.tolerance
+
+            safe_tactor = self._calculate_safe_value(theoretical_tactor, 'dimension')
+            safe_ring = self._calculate_safe_value(theoretical_ring, 'dimension')
+
             suggestions.append(
                 f"Tactor-magnet clearance fix:\n"
                 f"  1. Reduce {ConfigurationManager.get_parameter_display('tactorRadius')} to {safe_tactor:.1f}mm\n"
                 f"  2. Increase {ConfigurationManager.get_parameter_display('magnetRingRadius')} to {safe_ring:.0f}mm"
             )
-        
+
         return suggestions
+
+    def _suggest_increase_parameter(self, error: str, config: Dict) -> str:
+        """Suggest increasing a parameter that's below minimum"""
+        import re
+        param_match = re.search(r'\[(\d+)\] ([^:]+)', error)
+        if param_match:
+            param_name = param_match.group(2).strip()
+            # Find the actual parameter name from display name
+            for name, param_def in ConfigurationManager.PARAMETERS.items():
+                if param_def.display_name == param_name:
+                    safe_value = param_def.min_value + 0.5
+                    return f"Increase {ConfigurationManager.get_parameter_display(name)} to at least {safe_value}"
+        return None
+
+    def _suggest_decrease_parameter(self, error: str, config: Dict) -> str:
+        """Suggest decreasing a parameter that's above maximum"""
+        import re
+        param_match = re.search(r'\[(\d+)\] ([^:]+)', error)
+        if param_match:
+            param_name = param_match.group(2).strip()
+            # Find the actual parameter name from display name
+            for name, param_def in ConfigurationManager.PARAMETERS.items():
+                if param_def.display_name == param_name:
+                    safe_value = param_def.max_value - 0.5
+                    return f"Decrease {ConfigurationManager.get_parameter_display(name)} to at most {safe_value}"
+        return None
+
+    def _suggest_slot_polygon_fix(self, error: str, config: Dict) -> str:
+        """Suggest fixes for slot width vs polygon size issues"""
+        return "Adjust slot width or polygon radius to maintain proper clearances"
+
+    def _suggest_clearance_fix(self, error: str, config: Dict) -> str:
+        """Suggest fixes for clearance/intersection issues"""
+        return "Increase clearances between components or reduce component sizes"
+
+    def _suggest_interference_fix(self, error: str, config: Dict) -> str:
+        """Suggest fixes for component interference"""
+        return "Adjust component positions or sizes to eliminate interference"
+
+    def _suggest_size_increase(self, error: str, config: Dict) -> str:
+        """Suggest increasing size for components that are too small"""
+        import re
+        value_match = re.search(r'(\d+\.?\d*)', error)
+        if value_match:
+            current_value = float(value_match.group(1))
+            suggested_value = current_value * 1.2  # 20% increase
+            return f"Increase the parameter to at least {suggested_value:.1f}mm"
+        return "Increase the parameter value"
+
+    def _suggest_tolerance_fix(self, error: str, config: Dict) -> str:
+        """Suggest fixes for tolerance violations"""
+        return f"Increase clearance to at least {self.tolerance * 1.2:.1f}mm for reliable manufacturing"
+
+    def _calculate_safe_value(self, theoretical_value: float, param_type: str) -> float:
+        """Add safety margin to prevent edge case failures"""
+        SAFETY_MARGINS = {
+            'clearance': 1.2,    # 20% margin for clearances
+            'dimension': 1.1,     # 10% margin for dimensions
+            'angle': 1.05,        # 5% margin for angles
+            'count': 1.0          # No margin for counts
+        }
+
+        margin = SAFETY_MARGINS.get(param_type, 1.1)
+        safe_value = theoretical_value * margin
+
+        # Round appropriately
+        if param_type == 'count':
+            return int(safe_value)
+        elif param_type == 'angle':
+            return round(safe_value, 0)  # Round to nearest degree
+        else:
+            return round(safe_value, 1)  # Round to 0.1mm

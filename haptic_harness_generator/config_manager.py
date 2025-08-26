@@ -462,12 +462,13 @@ class ConfigurationManager:
 
     @classmethod
     def get_parameter_display(cls, param_name: str) -> str:
-        """Get display name with UI number"""
+        """Get display name with UI number (improved formatting)"""
         param = cls.PARAMETERS.get(param_name)
-        if param and param.ui_number > 0:
-            return f"[{param.ui_number}] {param.display_name}"
-        elif param:
-            return param.display_name
+        if param:
+            if param.ui_number > 0:
+                return f"[{param.ui_number}] {param.display_name}"
+            else:
+                return f"{param.display_name}"  # Remove bracket entirely for [0]
         return param_name
 
     @classmethod

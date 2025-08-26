@@ -49,6 +49,11 @@ class MyMainWindow(MainWindow):
         self.generator.signals.finished.connect(self.task_finished)
         self.threadpool = QtCore.QThreadPool()
 
+        # Setup validation timer for debounced auto-validation
+        self.validation_timer = QtCore.QTimer()
+        self.validation_timer.setSingleShot(True)
+        self.validation_timer.timeout.connect(self.validate_configuration)
+
         # Apply styling
         styleSheet = Styles()
         super().setStyleSheet(styleSheet.getStyles())
@@ -137,6 +142,27 @@ class MyMainWindow(MainWindow):
         return scroll_area
 
     def createDiagram(self):
+        container = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout()
+
+        # Title section
+        title = QtWidgets.QLabel("Reference Diagram")
+        title.setStyleSheet("""
+            QLabel {
+                font-size: 18px;
+                font-weight: bold;
+                padding: 10px;
+                background-color: #2a2a3a;
+                border-radius: 5px;
+            }
+        """)
+        title.setAlignment(QtCore.Qt.AlignCenter)
+
+        subtitle = QtWidgets.QLabel("← Numbered areas correspond to parameters")
+        subtitle.setStyleSheet("color: #888888; font-style: italic;")
+        subtitle.setAlignment(QtCore.Qt.AlignCenter)
+
+        # Existing scroll area with image
         scroll_area = QtWidgets.QScrollArea()
 
         label = QtWidgets.QLabel(self)
@@ -163,27 +189,49 @@ class MyMainWindow(MainWindow):
         )
         scroll_area.setWidgetResizable(True)
         scroll_area.setWidget(label)
-        return scroll_area
+
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+        layout.addWidget(scroll_area)
+        container.setLayout(layout)
+
+        return container
 
     def create_parameter_panel(self):
-        """Create parameter input panel using modular components"""
+        """Create parameter input panel with fixed validation section"""
         panel = QtWidgets.QWidget()
-        layout = QtWidgets.QVBoxLayout()
-        layout.setContentsMargins(20, 20, 30, 20)
+        main_layout = QtWidgets.QVBoxLayout()
+        main_layout.setContentsMargins(20, 20, 30, 20)
+
+        # Top section - Fixed preset and info
+        top_section = QtWidgets.QWidget()
+        top_section.setMaximumHeight(100)
+        top_layout = QtWidgets.QVBoxLayout()
 
         # Preset selector
         self.preset_selector = PresetSelector(ConfigurationManager.PRESETS)
         self.preset_selector.presetChanged.connect(self.load_preset)
-        layout.addWidget(self.preset_selector)
+        top_layout.addWidget(self.preset_selector)
 
-        # Add separator
-        separator = QtWidgets.QFrame()
-        separator.setFrameShape(QtWidgets.QFrame.HLine)
-        separator.setFrameShadow(QtWidgets.QFrame.Sunken)
-        layout.addWidget(separator)
+        # Add reference note
+        ref_note = QtWidgets.QLabel(
+            "📌 Numbers [1-25] in parameters correspond to labeled areas in the reference diagram →"
+        )
+        ref_note.setStyleSheet("""
+            QLabel {
+                color: #aaaaaa;
+                font-style: italic;
+                padding: 5px;
+                background-color: #2a2a3a;
+                border-radius: 3px;
+            }
+        """)
+        top_layout.addWidget(ref_note)
+        top_section.setLayout(top_layout)
 
-        # Create parameter categories using ConfigurationManager
+        # Middle section - Scrollable parameters
         scroll = QtWidgets.QScrollArea()
+        scroll.setMinimumHeight(300)
         scroll_widget = QtWidgets.QWidget()
         scroll_layout = QtWidgets.QVBoxLayout()
 
@@ -212,10 +260,25 @@ class MyMainWindow(MainWindow):
             separator.setFrameShadow(QtWidgets.QFrame.Sunken)
             scroll_layout.addWidget(separator)
 
+        # Setup scroll area for parameters only
+        scroll_widget.setLayout(scroll_layout)
+        scroll.setWidget(scroll_widget)
+        scroll.setWidgetResizable(True)
+        scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
-        # Validation display
+        # Bottom section - Fixed validation panel
+        bottom_section = QtWidgets.QWidget()
+        bottom_section.setMinimumHeight(250)
+        bottom_section.setMaximumHeight(400)
+        bottom_layout = QtWidgets.QVBoxLayout()
+
+        # Validation display with dynamic height
         self.validation_display = ValidationDisplay()
-        scroll_layout.addWidget(self.validation_display)
+        self.validation_display.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.MinimumExpanding
+        )
 
         # Configuration buttons
         self.config_buttons = ConfigurationButtons()
@@ -223,41 +286,48 @@ class MyMainWindow(MainWindow):
         self.config_buttons.generateRequested.connect(self.generate_parts)
         self.config_buttons.exportRequested.connect(self.export_configuration)
         self.config_buttons.importRequested.connect(self.import_configuration)
-        scroll_layout.addWidget(self.config_buttons)
 
         # Data validation checkbox (keep for compatibility)
-        scroll_layout.addWidget(self.dataValidationCheckBox)
+        checkbox_layout = QtWidgets.QHBoxLayout()
+        checkbox_layout.addWidget(self.dataValidationCheckBox)
+        checkbox_layout.addStretch()
 
         # Info labels
         info_label = QtWidgets.QLabel(
-            '<p style="color: #999999; font-size: 16px; font-style: italic;">2D file type is .dxf; 3D file type is .stl</p>'
+            '<p style="color: #999999; font-size: 14px; font-style: italic;">2D file type is .dxf; 3D file type is .stl</p>'
         )
         info_label.setAlignment(QtCore.Qt.AlignCenter)
-        scroll_layout.addWidget(info_label)
 
         github_label = QtWidgets.QLabel(
-            '<a href="https://github.com/HaRVI-Lab/haptic-harness" style="color: #339955; font-size: 16px;">Instructions on GitHub</a>'
+            '<a href="https://github.com/HaRVI-Lab/haptic-harness" style="color: #339955; font-size: 14px;">Instructions on GitHub</a>'
         )
         github_label.setAlignment(QtCore.Qt.AlignCenter)
         github_label.setOpenExternalLinks(True)
-        scroll_layout.addWidget(github_label)
 
-        # Setup scroll area
-        scroll_widget.setLayout(scroll_layout)
-        scroll.setWidget(scroll_widget)
-        scroll.setWidgetResizable(True)
-        scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        bottom_layout.addWidget(self.validation_display)
+        bottom_layout.addWidget(self.config_buttons)
+        bottom_layout.addLayout(checkbox_layout)
+        bottom_layout.addWidget(info_label)
+        bottom_layout.addWidget(github_label)
+        bottom_section.setLayout(bottom_layout)
 
-        layout.addWidget(scroll)
-        panel.setLayout(layout)
+        # Add all sections to main layout
+        main_layout.addWidget(top_section)
+        main_layout.addWidget(scroll, stretch=1)  # Scroll gets stretch
+        main_layout.addWidget(bottom_section)
 
+        panel.setLayout(main_layout)
         return panel
 
     def on_parameter_changed(self, param_name, value):
         """Handle parameter value changes"""
         self.setGeneratorAttribute(param_name, value)
-        self.preset_selector.set_custom()  # Switch to custom mode
+        # Only switch to custom if this is a user edit, not programmatic update
+        if not self.parameter_widgets[param_name]._updating_programmatically:
+            self.preset_selector.set_custom()  # Switch to custom mode
+            # Debounced validation - wait 500ms after last change
+            self.validation_timer.stop()
+            self.validation_timer.start(500)
 
     def load_preset(self, preset_name):
         """Load a preset configuration"""
@@ -285,7 +355,7 @@ class MyMainWindow(MainWindow):
             self.validate_configuration()
 
     def validate_configuration(self):
-        """Validate current configuration"""
+        """Validate current configuration with enhanced visual feedback"""
         # Gather current values from all categories
         config = {}
         for category_widget in self.parameter_categories.values():
@@ -301,8 +371,25 @@ class MyMainWindow(MainWindow):
         for param_name, widget in self.parameter_widgets.items():
             widget.set_error(param_name in result.affected_parameters)
 
-        # Enable/disable generate button
+        # Enable/disable generate button with visual feedback
         self.config_buttons.set_generate_enabled(result.is_valid)
+
+        # Add visual feedback to generate button
+        if result.is_valid:
+            self.config_buttons.generate_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #44aa44;
+                    border: 2px solid #66ff66;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #55bb55;
+                }
+            """)
+            self.pbar.setFormat("✓ Valid Configuration - Ready to Generate")
+        else:
+            self.config_buttons.generate_btn.setStyleSheet("")
+            self.pbar.setFormat(f"✗ {len(result.errors)} errors to fix")
 
         return result.is_valid
 

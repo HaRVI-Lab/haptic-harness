@@ -7,27 +7,44 @@ import json
 
 class ParameterWidget(QtWidgets.QWidget):
     """Custom widget for parameter input with validation"""
-    
+
     parameterChanged = QtCore.pyqtSignal(str, str)  # name, value
-    
+
     def __init__(self, param_def, parent=None):
         super().__init__(parent)
         self.param_def = param_def
+        self._updating_programmatically = False
         self.setup_ui()
     
     def setup_ui(self):
-        layout = QtWidgets.QHBoxLayout()
-        
-        # Label with tooltip
-        label = QtWidgets.QLabel(f"[{self.param_def.ui_number}] {self.param_def.display_name}")
+        # Use QGridLayout for perfect alignment
+        grid = QtWidgets.QGridLayout()
+        grid.setColumnStretch(4, 1)  # Last column stretches
+
+        # Fixed column widths for consistent alignment
+        label_width = 300
+        input_width = 80
+        unit_width = 40
+        range_width = 100
+
+        # Label with tooltip using improved display method
+        try:
+            from .config_manager import ConfigurationManager
+        except ImportError:
+            from config_manager import ConfigurationManager
+
+        label = QtWidgets.QLabel(ConfigurationManager.get_parameter_display(self.param_def.name))
         label.setToolTip(self.param_def.tooltip)
-        label.setMinimumWidth(250)
-        
+        label.setMinimumWidth(label_width)
+        label.setMaximumWidth(label_width)
+
         # Input field
         self.input = QtWidgets.QLineEdit()
         self.input.setText(str(self.param_def.default_value))
-        self.input.setMaximumWidth(100)
-        
+        self.input.setMinimumWidth(input_width)
+        self.input.setMaximumWidth(input_width)
+        self.input.setAlignment(QtCore.Qt.AlignRight)
+
         # Validator
         if self.param_def.unit and self.param_def.unit != "":
             validator = QtGui.QDoubleValidator(
@@ -41,33 +58,50 @@ class ParameterWidget(QtWidgets.QWidget):
                 int(self.param_def.max_value)
             )
         self.input.setValidator(validator)
-        
+
         # Unit label
         unit_label = QtWidgets.QLabel(self.param_def.unit)
-        unit_label.setMinimumWidth(30)
-        
-        # Range label
-        range_label = QtWidgets.QLabel(
-            f"[{self.param_def.min_value}-{self.param_def.max_value}]"
-        )
-        range_label.setStyleSheet("color: #777777; font-size: 12px;")
-        
-        layout.addWidget(label)
-        layout.addWidget(self.input)
-        layout.addWidget(unit_label)
-        layout.addWidget(range_label)
-        layout.addStretch()
-        
-        self.setLayout(layout)
-        
-        # Connect signal
-        self.input.textChanged.connect(
-            lambda v: self.parameterChanged.emit(self.param_def.name, v)
-        )
+        unit_label.setMinimumWidth(unit_width)
+        unit_label.setMaximumWidth(unit_width)
+
+        # Enhanced range label with color coding
+        range_text = f"{self.param_def.min_value}-{self.param_def.max_value}"
+        range_label = QtWidgets.QLabel(range_text)
+        range_label.setStyleSheet("""
+            QLabel {
+                color: #888888;
+                font-size: 12px;
+                padding: 2px 6px;
+                border: 1px solid #555555;
+                border-radius: 3px;
+                background-color: #2a2a2a;
+            }
+        """)
+        range_label.setToolTip(f"Valid range: {range_text} {self.param_def.unit}")
+        range_label.setMinimumWidth(range_width)
+        range_label.setMaximumWidth(range_width)
+
+        # Add to grid with perfect alignment
+        grid.addWidget(label, 0, 0)
+        grid.addWidget(self.input, 0, 1)
+        grid.addWidget(unit_label, 0, 2)
+        grid.addWidget(range_label, 0, 3)
+
+        self.setLayout(grid)
+
+        # Connect signal with programmatic update check
+        self.input.textChanged.connect(self._on_text_changed)
+
+    def _on_text_changed(self, text):
+        """Handle text changes, but only emit signal if not updating programmatically"""
+        if not self._updating_programmatically:
+            self.parameterChanged.emit(self.param_def.name, text)
     
     def set_value(self, value):
-        """Set parameter value"""
+        """Set parameter value programmatically without triggering change signal"""
+        self._updating_programmatically = True
         self.input.setText(str(value))
+        self._updating_programmatically = False
     
     def get_value(self):
         """Get parameter value"""
