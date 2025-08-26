@@ -238,9 +238,9 @@ class MyMainWindow(MainWindow):
 
         # Pinned messages section - Enhanced with range clarification
         messages_section = QtWidgets.QWidget()
-        messages_section.setMaximumHeight(80)
+        messages_section.setMaximumHeight(70)  # Reduced from 80px
         messages_layout = QtWidgets.QVBoxLayout()
-        messages_layout.setContentsMargins(0, 0, 0, 10)
+        messages_layout.setContentsMargins(0, 0, 0, 5)  # Reduced bottom margin
 
         # First message - parameter numbers
         ref_note = QtWidgets.QLabel(
@@ -250,10 +250,11 @@ class MyMainWindow(MainWindow):
             QLabel {
                 color: #aaaaaa;
                 font-style: italic;
-                padding: 5px;
+                font-size: 12px;
+                padding: 3px 5px;
                 background-color: #2a2a3a;
                 border-radius: 3px;
-                margin-bottom: 2px;
+                margin-bottom: 1px;
             }
         """)
 
@@ -265,7 +266,8 @@ class MyMainWindow(MainWindow):
             QLabel {
                 color: #aaaaaa;
                 font-style: italic;
-                padding: 5px;
+                font-size: 12px;
+                padding: 3px 5px;
                 background-color: #2a2a3a;
                 border-radius: 3px;
             }
@@ -273,6 +275,7 @@ class MyMainWindow(MainWindow):
 
         messages_layout.addWidget(ref_note)
         messages_layout.addWidget(range_note)
+        messages_layout.setSpacing(2)  # Minimal spacing between messages
         messages_section.setLayout(messages_layout)
 
         # Middle section - Scrollable parameters
@@ -329,8 +332,21 @@ class MyMainWindow(MainWindow):
         # Action buttons (Validate and Generate only)
         action_layout = QtWidgets.QHBoxLayout()
 
+        # Smaller validate button since validation runs automatically
         self.validate_btn = QtWidgets.QPushButton("Validate")
         self.validate_btn.clicked.connect(self.validate_configuration)
+        self.validate_btn.setMaximumWidth(80)  # Compact width
+        self.validate_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 11px;
+                padding: 6px 10px;
+                color: #aaaaaa;
+                border-radius: 3px;
+            }
+            QPushButton:hover {
+                color: #ffffff;
+            }
+        """)
 
         self.generate_btn = QtWidgets.QPushButton("Generate")
         self.generate_btn.clicked.connect(self.generate_parts)
