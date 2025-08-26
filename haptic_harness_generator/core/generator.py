@@ -92,6 +92,7 @@ class Generator(QRunnable):
             self.strapClipRadius = 1
             self.distanceBetweenStrapsInClip = 2
             self.strapClipRim = 2
+            self.slotSpacing = 2
 
         self.tyvek_tile = self.generateTyvekTile()
         self.foam = self.generateFoam()
@@ -182,6 +183,7 @@ class Generator(QRunnable):
             "strapClipRadius",
             "distanceBetweenStrapsInClip",
             "strapClipRim",
+            "slotSpacing",
         ]
 
         if self.numSides < 3 or self.numSides > 8:
@@ -1732,7 +1734,7 @@ class Generator(QRunnable):
                 )
             )
             magnetHolder = self.polygonalPrism(
-                radius=self.magnetRadius + self.magnetClipRingThickness,
+                radius=self.magnetRadius + self.magnetClipRingThickness + 0.5,  # Added 0.5mm tolerance
                 res=20,
                 height=self.magnetThickness,
                 origin=magnetOrigin,
@@ -1750,7 +1752,7 @@ class Generator(QRunnable):
                 )
             )
             magnet = self.polygonalPrism(
-                radius=self.magnetRadius,
+                radius=self.magnetRadius + 0.5,  # Added 0.5mm tolerance
                 res=20,
                 height=self.magnetThickness,
                 origin=magnetOrigin,
@@ -1758,48 +1760,56 @@ class Generator(QRunnable):
 
             base = self.booleanOp(base, magnet, "difference")
 
-        # Create slot
-        slotOrigin = np.array(
-            (
-                origin[0],
-                origin[1]
-                + self.distanceBetweenMagnetClipAndSlot
-                + self.magnetRadius
-                + self.magnetClipRingThickness
-                + self.slotHeight / 2,
-                origin[2],
-            )
-        )
-        bottomVerts, bottomFaces = self.generateSlot(
-            slotOrigin, self.slotHeight, self.slotWidth,  0.1  # Swapped!
-        )
-        topHalfOrigin = slotOrigin + np.array(
-            (0, 0, self.magnetClipThickness + self.magnetThickness * 2)
-        )
-        topVerts, topFaces = self.generateSlot(
-            topHalfOrigin, self.slotHeight, self.slotWidth, 0.1   # Swapped!
-        )
-        totalVerts = []
-        totalFaces = []
-        totalVerts.extend(bottomVerts)
-        totalVerts.extend(topVerts)
-        totalFaces.extend(bottomFaces)
-        offset = len(bottomVerts)
-        for i, face in enumerate(topFaces):
-            topFaces[i] = (3, face[1] + offset, face[2] + offset, face[3] + offset)
-        totalFaces.extend(topFaces)
-        offset = len(bottomVerts)
-        loopAround = len(bottomVerts) - 1
-        for i in range(len(bottomVerts) - 1):
-            totalFaces.append((3, i, i + offset, (i + 1) % loopAround + offset))
-            totalFaces.append(
-                (3, (i + 1) % loopAround + offset, (i + 1) % loopAround, i)
-            )
-        slot = pv.PolyData(totalVerts, totalFaces).compute_normals(
-            consistent_normals=True, auto_orient_normals=True
-        )
+        # Create two vertically stacked slots
+        # Spacing between slots is controlled by self.slotSpacing parameter (UI #26)
+        # This spacing is added to the vertical position calculation: i * (self.slotHeight + self.slotSpacing)
+        num_slots = 2
 
-        base = self.booleanOp(base, slot, "difference")
+        for i in range(num_slots):
+            slotOrigin = np.array(
+                (
+                    origin[0],
+                    origin[1]
+                    + self.distanceBetweenMagnetClipAndSlot
+                    + self.magnetRadius
+                    + self.magnetClipRingThickness
+                    + self.slotHeight / 2
+                    + i * (self.slotHeight + 2 * self.slotSpacing),  # Vertical offset using configurable spacing
+                    origin[2],
+                )
+            )
+
+            bottomVerts, bottomFaces = self.generateSlot(
+                slotOrigin, self.slotHeight, self.slotWidth, self.slotHeight / 4
+            )
+            topHalfOrigin = slotOrigin + np.array(
+                (0, 0, self.magnetClipThickness + self.magnetThickness * 2)
+            )
+            topVerts, topFaces = self.generateSlot(
+                topHalfOrigin, self.slotHeight, self.slotWidth, self.slotHeight / 4
+            )
+
+            totalVerts = []
+            totalFaces = []
+            totalVerts.extend(bottomVerts)
+            totalVerts.extend(topVerts)
+            totalFaces.extend(bottomFaces)
+            offset = len(bottomVerts)
+            for j, face in enumerate(topFaces):
+                topFaces[j] = (3, face[1] + offset, face[2] + offset, face[3] + offset)
+            totalFaces.extend(topFaces)
+            offset = len(bottomVerts)
+            loopAround = len(bottomVerts) - 1
+            for j in range(len(bottomVerts) - 1):
+                totalFaces.append((3, j, j + offset, (j + 1) % loopAround + offset))
+                totalFaces.append(
+                    (3, (j + 1) % loopAround + offset, (j + 1) % loopAround, j)
+                )
+            slot = pv.PolyData(totalVerts, totalFaces).compute_normals(
+                consistent_normals=True, auto_orient_normals=True
+            )
+
+            base = self.booleanOp(base, slot, "difference")
         base.save(f"{self.userDir}/magnetClip.stl")
         return base
 

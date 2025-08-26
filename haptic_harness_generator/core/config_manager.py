@@ -363,6 +363,18 @@ class ConfigurationManager:
             category="Strap Parameters",
             validation_dependencies=["strapClipRadius"]
         ),
+        "slotSpacing": ParameterDefinition(
+            name="slotSpacing",
+            display_name="Slot Spacing",
+            ui_number=26,
+            unit="mm",
+            min_value=1,
+            max_value=10,
+            default_value=2,
+            tooltip="Vertical spacing between the two slots in the magnet clip",
+            category="Clip Parameters",
+            validation_dependencies=["slotHeight"]
+        ),
     }
 
     # VALIDATED PRESET CONFIGURATIONS
@@ -395,7 +407,8 @@ class ConfigurationManager:
             "strapClipThickness": 1.5,
             "strapClipRadius": 1,
             "distanceBetweenStrapsInClip": 2,
-            "strapClipRim": 2
+            "strapClipRim": 2,
+            "slotSpacing": 2
         },
         "Compact 4-sided": {
             "concentricPolygonRadius": 28,
@@ -425,7 +438,8 @@ class ConfigurationManager:
             "strapClipThickness": 1.5,
             "strapClipRadius": 1,
             "distanceBetweenStrapsInClip": 2,
-            "strapClipRim": 2
+            "strapClipRim": 2,
+            "slotSpacing": 2
         },
         "Standard 6-sided": {
             # Use exact values from working configuration
@@ -456,7 +470,8 @@ class ConfigurationManager:
             "strapClipThickness": 1,
             "strapClipRadius": 1,
             "distanceBetweenStrapsInClip": 2,
-            "strapClipRim": 2
+            "strapClipRim": 2,
+            "slotSpacing": 2
         }
     }
 
