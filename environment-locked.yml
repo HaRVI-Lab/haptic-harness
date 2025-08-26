@@ -1,0 +1,15 @@
+name: hhgen
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9.18
+  - vtk=9.3.0
+  - vtkbool=3.0.1
+  - numpy=1.24.3
+  - pyqt=5.15.9
+  - pip=23.3.1
+  - pip:
+    - pyvista==0.42.3
+    - pyvistaqt==0.11.0
+    - ezdxf==1.1.3

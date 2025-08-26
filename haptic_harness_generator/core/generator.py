@@ -1,3 +1,18 @@
+"""
+Core generation engine for the Haptic Harness Generator.
+
+This module contains the main Generator class responsible for creating
+parameterized haptic harness tiles. It handles:
+- 3D mesh generation using PyVista
+- DXF file creation using ezdxf
+- STL file export
+- Parameter validation and processing
+
+Example usage:
+    generator = Generator('/path/to/output')
+    generator.regen()  # Generate with default parameters
+"""
+
 from logging import currentframe
 from PyQt5.QtCore import ws
 from ezdxf.layouts import base

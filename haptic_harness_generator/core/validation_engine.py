@@ -4,10 +4,7 @@ Comprehensive validation engine with detailed testing
 import numpy as np
 from typing import Dict, List, Tuple, Set
 from dataclasses import dataclass
-try:
-    from .config_manager import ConfigurationManager
-except ImportError:
-    from config_manager import ConfigurationManager
+from haptic_harness_generator.core.config_manager import ConfigurationManager
 
 @dataclass
 class ValidationResult:

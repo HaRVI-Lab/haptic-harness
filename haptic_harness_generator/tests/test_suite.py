@@ -7,12 +7,8 @@ import tempfile
 import os
 from typing import Dict, List
 import numpy as np
-try:
-    from .config_manager import ConfigurationManager
-    from .validation_engine import ValidationEngine
-except ImportError:
-    from config_manager import ConfigurationManager
-    from validation_engine import ValidationEngine
+from haptic_harness_generator.core.config_manager import ConfigurationManager
+from haptic_harness_generator.core.validation_engine import ValidationEngine
 
 class TestPresetConfigurations(unittest.TestCase):
     """Test all preset configurations"""
@@ -36,10 +32,7 @@ class TestPresetConfigurations(unittest.TestCase):
         """All presets must generate without errors"""
         # Import Generator here to avoid circular imports
         try:
-            try:
-                from .Generator import Generator
-            except ImportError:
-                from Generator import Generator
+            from haptic_harness_generator.core.generator import Generator
         except ImportError:
             self.skipTest("Generator module not available for testing")
             

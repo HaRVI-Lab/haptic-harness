@@ -28,10 +28,7 @@ class ParameterWidget(QtWidgets.QWidget):
         range_width = 100
 
         # Label with tooltip using improved display method
-        try:
-            from .config_manager import ConfigurationManager
-        except ImportError:
-            from config_manager import ConfigurationManager
+        from haptic_harness_generator.core.config_manager import ConfigurationManager
 
         label = QtWidgets.QLabel(ConfigurationManager.get_parameter_display(self.param_def.name))
         label.setToolTip(self.param_def.tooltip)

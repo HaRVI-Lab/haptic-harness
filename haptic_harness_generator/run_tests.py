@@ -7,10 +7,7 @@ import time
 import json
 import tempfile
 from datetime import datetime
-try:
-    from .test_suite import run_all_tests
-except ImportError:
-    from test_suite import run_all_tests
+from haptic_harness_generator.tests.test_suite import run_all_tests
 
 class TestReporter:
     """Generate test reports"""
@@ -55,12 +52,8 @@ class TestReporter:
     
     def _test_all_presets(self):
         """Test all preset configurations"""
-        try:
-            from .config_manager import ConfigurationManager
-            from .validation_engine import ValidationEngine
-        except ImportError:
-            from config_manager import ConfigurationManager
-            from validation_engine import ValidationEngine
+        from haptic_harness_generator.core.config_manager import ConfigurationManager
+        from haptic_harness_generator.core.validation_engine import ValidationEngine
         
         results = {}
         validator = ValidationEngine()
@@ -90,10 +83,7 @@ class TestReporter:
             }, "should_fail": True},
         ]
         
-        try:
-            from .validation_engine import ValidationEngine
-        except ImportError:
-            from validation_engine import ValidationEngine
+        from haptic_harness_generator.core.validation_engine import ValidationEngine
         validator = ValidationEngine()
         
         results = {}
@@ -111,10 +101,7 @@ class TestReporter:
     def _test_ui_scaling(self):
         """Test UI scaling factors"""
         try:
-            try:
-                from .ui_helpers import ScalingHelper
-            except ImportError:
-                from ui_helpers import ScalingHelper
+            from haptic_harness_generator.ui.ui_helpers import ScalingHelper
             scale = ScalingHelper.get_scale_factor()
             return {
                 "scale_factor": scale,
@@ -128,10 +115,7 @@ class TestReporter:
     
     def _test_export_import(self):
         """Test configuration export/import"""
-        try:
-            from .config_manager import ConfigurationManager
-        except ImportError:
-            from config_manager import ConfigurationManager
+        from haptic_harness_generator.core.config_manager import ConfigurationManager
         
         results = {}
         
@@ -164,12 +148,8 @@ class TestReporter:
     
     def _test_parameter_ranges(self):
         """Test parameter range validation"""
-        try:
-            from .config_manager import ConfigurationManager
-            from .validation_engine import ValidationEngine
-        except ImportError:
-            from config_manager import ConfigurationManager
-            from validation_engine import ValidationEngine
+        from haptic_harness_generator.core.config_manager import ConfigurationManager
+        from haptic_harness_generator.core.validation_engine import ValidationEngine
 
         validator = ValidationEngine()
         results = {}

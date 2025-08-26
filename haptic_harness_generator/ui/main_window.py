@@ -1,11 +1,7 @@
 from pyvistaqt import QtInteractor, MainWindow
-from PyQt5 import QtCore, QtWidgets, Qt, QtGui, QtWebEngineWidgets
-try:
-    from .Styles import Styles
-    from .Generator import Generator, WorkerWrapper
-except ImportError:
-    from Styles import Styles
-    from Generator import Generator, WorkerWrapper
+from PyQt5 import QtCore, QtWidgets, Qt, QtGui
+from haptic_harness_generator.ui.styles import Styles
+from haptic_harness_generator.core.generator import Generator, WorkerWrapper
 from time import perf_counter
 import re
 import os
@@ -13,20 +9,14 @@ from pyvista import Camera
 import numpy as np
 
 # Import new modular components
-try:
-    from .config_manager import ConfigurationManager
-    from .validation_engine import ValidationEngine
-    from .ui_helpers import (ParameterWidget, ValidationDisplay, ScalingHelper,
-                            PresetSelector, ConfigurationButtons, ParameterCategory)
-except ImportError:
-    from config_manager import ConfigurationManager
-    from validation_engine import ValidationEngine
-    from ui_helpers import (ParameterWidget, ValidationDisplay, ScalingHelper,
-                           PresetSelector, ConfigurationButtons, ParameterCategory)
+from haptic_harness_generator.core.config_manager import ConfigurationManager
+from haptic_harness_generator.core.validation_engine import ValidationEngine
+from haptic_harness_generator.ui.ui_helpers import (ParameterWidget, ValidationDisplay, ScalingHelper,
+                        PresetSelector, ConfigurationButtons, ParameterCategory)
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-rotate_icon_path = os.path.join(current_dir, "rotateIcon.png")
-anatomy_of_tile_path = os.path.join(current_dir, "hapticsNew.jpg")
+current_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+rotate_icon_path = os.path.join(current_dir, "images", "rotateIcon.png")
+anatomy_of_tile_path = os.path.join(current_dir, "images", "hapticsNew.jpg")
 
 # Use ConfigurationManager for presets instead of hardcoded values
 PRESET_CONFIGS = ConfigurationManager.PRESETS
@@ -498,10 +488,12 @@ class MyMainWindow(MainWindow):
                     self.generator.generatedObjects[i * 3 + j + 3],
                     color=self.interactorColor,
                 )
-                self.plotters[-1].add_logo_widget(
-                    rotate_icon_path,
-                    position=(0.05, 0.05),
-                    size=(0.1, 0.1),
+                # Add rotation hint text instead of logo (PyVista 0.42.3 compatible)
+                self.plotters[-1].add_text(
+                    "↻ Drag to rotate",
+                    position='lower_left',
+                    font_size=8,
+                    color='gray'
                 )
             plotLayout.addLayout(subPlotLayout)
 

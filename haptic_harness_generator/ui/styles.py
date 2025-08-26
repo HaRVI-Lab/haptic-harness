@@ -1,3 +1,13 @@
+"""
+UI styling and theme management for the Haptic Harness Generator.
+
+This module provides consistent styling across the application including:
+- Color schemes
+- Widget styles
+- Layout configurations
+"""
+
+
 class Styles:
     def __init__(self):
         self.colors = {
