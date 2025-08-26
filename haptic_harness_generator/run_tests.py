@@ -7,7 +7,10 @@ import time
 import json
 import tempfile
 from datetime import datetime
-from haptic_harness_generator.tests.test_suite import run_all_tests
+
+# Add the parent directory to the path to import from tests
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from tests.test_suite import run_all_tests
 
 class TestReporter:
     """Generate test reports"""

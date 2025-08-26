@@ -12,11 +12,11 @@ import numpy as np
 from haptic_harness_generator.core.config_manager import ConfigurationManager
 from haptic_harness_generator.core.validation_engine import ValidationEngine
 from haptic_harness_generator.ui.ui_helpers import (ParameterWidget, ValidationDisplay, ScalingHelper,
-                        PresetSelector, ConfigurationButtons, ParameterCategory)
+                        PresetSelector, ParameterCategory)
 
-current_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-rotate_icon_path = os.path.join(current_dir, "images", "rotateIcon.png")
-anatomy_of_tile_path = os.path.join(current_dir, "images", "hapticsNew.jpg")
+current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+rotate_icon_path = os.path.join(current_dir, "assets", "rotateIcon.png")
+anatomy_of_tile_path = os.path.join(current_dir, "assets", "hapticsNew.jpg")
 
 # Use ConfigurationManager for presets instead of hardcoded values
 PRESET_CONFIGS = ConfigurationManager.PRESETS
@@ -193,17 +193,56 @@ class MyMainWindow(MainWindow):
         main_layout = QtWidgets.QVBoxLayout()
         main_layout.setContentsMargins(20, 20, 30, 20)
 
-        # Top section - Fixed preset and info
+        # Top section - Streamlined preset bar with compact buttons
         top_section = QtWidgets.QWidget()
-        top_section.setMaximumHeight(100)
-        top_layout = QtWidgets.QVBoxLayout()
+        top_section.setMaximumHeight(50)  # Reduced from 80px to 50px
+        top_layout = QtWidgets.QHBoxLayout()
+        top_layout.setContentsMargins(0, 0, 0, 5)  # Reduced bottom margin
 
-        # Preset selector
+        # Preset selector (left side)
         self.preset_selector = PresetSelector(ConfigurationManager.PRESETS)
         self.preset_selector.presetChanged.connect(self.load_preset)
         top_layout.addWidget(self.preset_selector)
 
-        # Add reference note
+        # Spacer to push buttons to the right
+        top_layout.addStretch()
+
+        # Export/Import buttons (right side) - Compact design
+        self.export_btn = QtWidgets.QPushButton("Export")
+        self.export_btn.clicked.connect(self.export_configuration)
+        self.export_btn.setMaximumWidth(70)  # Reduced from 80px
+        self.export_btn.setMaximumHeight(30)  # Compact height
+        self.export_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 12px;
+                padding: 4px 8px;
+                border-radius: 3px;
+            }
+        """)
+
+        self.import_btn = QtWidgets.QPushButton("Import")
+        self.import_btn.clicked.connect(self.import_configuration)
+        self.import_btn.setMaximumWidth(70)  # Reduced from 80px
+        self.import_btn.setMaximumHeight(30)  # Compact height
+        self.import_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 12px;
+                padding: 4px 8px;
+                border-radius: 3px;
+            }
+        """)
+
+        top_layout.addWidget(self.export_btn)
+        top_layout.addWidget(self.import_btn)
+        top_section.setLayout(top_layout)
+
+        # Pinned messages section - Enhanced with range clarification
+        messages_section = QtWidgets.QWidget()
+        messages_section.setMaximumHeight(80)
+        messages_layout = QtWidgets.QVBoxLayout()
+        messages_layout.setContentsMargins(0, 0, 0, 10)
+
+        # First message - parameter numbers
         ref_note = QtWidgets.QLabel(
             "📌 Numbers [1-25] in parameters correspond to labeled areas in the reference diagram →"
         )
@@ -214,10 +253,27 @@ class MyMainWindow(MainWindow):
                 padding: 5px;
                 background-color: #2a2a3a;
                 border-radius: 3px;
+                margin-bottom: 2px;
             }
         """)
-        top_layout.addWidget(ref_note)
-        top_section.setLayout(top_layout)
+
+        # Second message - range clarification
+        range_note = QtWidgets.QLabel(
+            "📌 Ranges shown (e.g., 20-50 for [1]) indicate ideal values for that parameter"
+        )
+        range_note.setStyleSheet("""
+            QLabel {
+                color: #aaaaaa;
+                font-style: italic;
+                padding: 5px;
+                background-color: #2a2a3a;
+                border-radius: 3px;
+            }
+        """)
+
+        messages_layout.addWidget(ref_note)
+        messages_layout.addWidget(range_note)
+        messages_section.setLayout(messages_layout)
 
         # Middle section - Scrollable parameters
         scroll = QtWidgets.QScrollArea()
@@ -257,52 +313,60 @@ class MyMainWindow(MainWindow):
         scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
-        # Bottom section - Fixed validation panel
+        # Bottom section - Expanded validation panel
         bottom_section = QtWidgets.QWidget()
-        bottom_section.setMinimumHeight(250)
-        bottom_section.setMaximumHeight(400)
+        bottom_section.setMinimumHeight(300)
+        bottom_section.setMaximumHeight(450)  # Increased from 400px
         bottom_layout = QtWidgets.QVBoxLayout()
 
-        # Validation display with dynamic height
+        # Validation display with expanded height
         self.validation_display = ValidationDisplay()
         self.validation_display.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding,
             QtWidgets.QSizePolicy.MinimumExpanding
         )
 
-        # Configuration buttons
-        self.config_buttons = ConfigurationButtons()
-        self.config_buttons.validateRequested.connect(self.validate_configuration)
-        self.config_buttons.generateRequested.connect(self.generate_parts)
-        self.config_buttons.exportRequested.connect(self.export_configuration)
-        self.config_buttons.importRequested.connect(self.import_configuration)
+        # Action buttons (Validate and Generate only)
+        action_layout = QtWidgets.QHBoxLayout()
+
+        self.validate_btn = QtWidgets.QPushButton("Validate")
+        self.validate_btn.clicked.connect(self.validate_configuration)
+
+        self.generate_btn = QtWidgets.QPushButton("Generate")
+        self.generate_btn.clicked.connect(self.generate_parts)
+
+        action_layout.addWidget(self.validate_btn)
+        action_layout.addWidget(self.generate_btn)
+        action_layout.addStretch()
 
         # Data validation checkbox (keep for compatibility)
-        checkbox_layout = QtWidgets.QHBoxLayout()
-        checkbox_layout.addWidget(self.dataValidationCheckBox)
-        checkbox_layout.addStretch()
+        action_layout.addWidget(self.dataValidationCheckBox)
 
-        # Info labels
+        # Consolidated info line at bottom
+        info_layout = QtWidgets.QHBoxLayout()
+        info_layout.setContentsMargins(0, 10, 0, 0)
+
         info_label = QtWidgets.QLabel(
-            '<p style="color: #999999; font-size: 14px; font-style: italic;">2D file type is .dxf; 3D file type is .stl</p>'
+            '<span style="color: #999999; font-size: 14px; font-style: italic;">2D file type is .dxf; 3D file type is .stl</span>'
         )
-        info_label.setAlignment(QtCore.Qt.AlignCenter)
 
         github_label = QtWidgets.QLabel(
             '<a href="https://github.com/HaRVI-Lab/haptic-harness" style="color: #339955; font-size: 14px;">Instructions on GitHub</a>'
         )
-        github_label.setAlignment(QtCore.Qt.AlignCenter)
         github_label.setOpenExternalLinks(True)
 
+        info_layout.addWidget(info_label)
+        info_layout.addStretch()  # Spacer between info and GitHub link
+        info_layout.addWidget(github_label)
+
         bottom_layout.addWidget(self.validation_display)
-        bottom_layout.addWidget(self.config_buttons)
-        bottom_layout.addLayout(checkbox_layout)
-        bottom_layout.addWidget(info_label)
-        bottom_layout.addWidget(github_label)
+        bottom_layout.addLayout(action_layout)
+        bottom_layout.addLayout(info_layout)
         bottom_section.setLayout(bottom_layout)
 
         # Add all sections to main layout
         main_layout.addWidget(top_section)
+        main_layout.addWidget(messages_section)
         main_layout.addWidget(scroll, stretch=1)  # Scroll gets stretch
         main_layout.addWidget(bottom_section)
 
@@ -362,15 +426,16 @@ class MyMainWindow(MainWindow):
             widget.set_error(param_name in result.affected_parameters)
 
         # Enable/disable generate button with visual feedback
-        self.config_buttons.set_generate_enabled(result.is_valid)
+        self.generate_btn.setEnabled(result.is_valid)
 
         # Add visual feedback to generate button
         if result.is_valid:
-            self.config_buttons.generate_btn.setStyleSheet("""
+            self.generate_btn.setStyleSheet("""
                 QPushButton {
                     background-color: #44aa44;
                     border: 2px solid #66ff66;
                     font-weight: bold;
+                    color: white;
                 }
                 QPushButton:hover {
                     background-color: #55bb55;
@@ -378,7 +443,7 @@ class MyMainWindow(MainWindow):
             """)
             self.pbar.setFormat("✓ Valid Configuration - Ready to Generate")
         else:
-            self.config_buttons.generate_btn.setStyleSheet("")
+            self.generate_btn.setStyleSheet("")
             self.pbar.setFormat(f"✗ {len(result.errors)} errors to fix")
 
         return result.is_valid
@@ -561,7 +626,7 @@ class MyMainWindow(MainWindow):
         self.pbar.setFormat(progress_labels[value])
 
     def task_finished(self):
-        self.config_buttons.set_generate_enabled(True)
+        self.generate_btn.setEnabled(True)
         for i, pl in enumerate(self.plotters[:3]):
             pl.clear_actors()
             pl.add_mesh(
@@ -583,7 +648,7 @@ class MyMainWindow(MainWindow):
         if self.dataValidationCheckBox.isChecked():
             messages = self.generator.validate()
         if len(messages) == 0:
-            self.config_buttons.set_generate_enabled(False)
+            self.generate_btn.setEnabled(False)
             self.threadpool.start(WorkerWrapper(self.generator))
         else:
             msg = QtWidgets.QMessageBox()

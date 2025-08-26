@@ -5,6 +5,7 @@ import numpy as np
 from typing import Dict, List, Tuple, Set
 from dataclasses import dataclass
 from haptic_harness_generator.core.config_manager import ConfigurationManager
+from haptic_harness_generator.core.precision_handler import PrecisionHandler, values_equal
 
 @dataclass
 class ValidationResult:
@@ -26,23 +27,26 @@ class ValidationEngine:
     
     def validate_complete(self, config: Dict) -> ValidationResult:
         """Complete validation with all checks"""
-        
+
         # Reset state
         self.critical_errors = []
         self.warnings = []
         self.affected_params = set()
         suggestions = []
-        
+
+        # Round all values before validation to ensure precision consistency
+        rounded_config = PrecisionHandler.round_config(config)
+
         # Run validation stages
-        self._validate_basic_ranges(config)
-        self._validate_geometric_constraints(config)
-        self._validate_manufacturing_constraints(config)
-        self._validate_assembly_constraints(config)
-        
+        self._validate_basic_ranges(rounded_config)
+        self._validate_geometric_constraints(rounded_config)
+        self._validate_manufacturing_constraints(rounded_config)
+        self._validate_assembly_constraints(rounded_config)
+
         # Generate suggestions
         if self.critical_errors:
-            suggestions = self._generate_fix_suggestions(config)
-        
+            suggestions = self._generate_fix_suggestions(rounded_config)
+
         return ValidationResult(
             is_valid=len(self.critical_errors) == 0,
             errors=self.critical_errors,
@@ -70,16 +74,17 @@ class ValidationEngine:
         for param_name, param_def in ConfigurationManager.PARAMETERS.items():
             if param_name in config:
                 value = config[param_name]
-                if value < param_def.min_value:
+                # Use tolerance-based comparison for floating point values
+                if value < param_def.min_value and not values_equal(value, param_def.min_value):
                     self.critical_errors.append(
                         f"{ConfigurationManager.get_parameter_display(param_name)}: "
-                        f"Value {value}{param_def.unit} below minimum {param_def.min_value}{param_def.unit}"
+                        f"Value {value:.2f}{param_def.unit} below minimum {param_def.min_value:.2f}{param_def.unit}"
                     )
                     self.affected_params.add(param_name)
-                elif value > param_def.max_value:
+                elif value > param_def.max_value and not values_equal(value, param_def.max_value):
                     self.critical_errors.append(
                         f"{ConfigurationManager.get_parameter_display(param_name)}: "
-                        f"Value {value}{param_def.unit} above maximum {param_def.max_value}{param_def.unit}"
+                        f"Value {value:.2f}{param_def.unit} above maximum {param_def.max_value:.2f}{param_def.unit}"
                     )
                     self.affected_params.add(param_name)
     
@@ -269,8 +274,8 @@ class ValidationEngine:
 
             suggestions.append(
                 f"Quick fix options:\n"
-                f"  1. Set {ConfigurationManager.get_parameter_display('slotWidth')} to {safe_slot:.0f}mm\n"
-                f"  2. Set {ConfigurationManager.get_parameter_display('concentricPolygonRadius')} to {safe_radius:.0f}mm"
+                f"  1. Set {ConfigurationManager.get_parameter_display('slotWidth')} → {safe_slot:.2f}mm\n"
+                f"  2. Set {ConfigurationManager.get_parameter_display('concentricPolygonRadius')} → {safe_radius:.2f}mm"
             )
 
         if 'tactorRadius' in self.affected_params and 'magnetRingRadius' in self.affected_params:
@@ -286,8 +291,8 @@ class ValidationEngine:
 
             suggestions.append(
                 f"Tactor-magnet clearance fix:\n"
-                f"  1. Reduce {ConfigurationManager.get_parameter_display('tactorRadius')} to {safe_tactor:.1f}mm\n"
-                f"  2. Increase {ConfigurationManager.get_parameter_display('magnetRingRadius')} to {safe_ring:.0f}mm"
+                f"  1. Set {ConfigurationManager.get_parameter_display('tactorRadius')} → {safe_tactor:.2f}mm\n"
+                f"  2. Set {ConfigurationManager.get_parameter_display('magnetRingRadius')} → {safe_ring:.2f}mm"
             )
 
         return suggestions
@@ -301,8 +306,9 @@ class ValidationEngine:
             # Find the actual parameter name from display name
             for name, param_def in ConfigurationManager.PARAMETERS.items():
                 if param_def.display_name == param_name:
-                    safe_value = param_def.min_value + 0.5
-                    return f"Increase {ConfigurationManager.get_parameter_display(name)} to at least {safe_value}"
+                    safe_value = PrecisionHandler.round_value(param_def.min_value + 0.5)
+                    unit_symbol = "°" if param_def.unit == "degrees" else param_def.unit
+                    return f"Set {ConfigurationManager.get_parameter_display(name)} → {safe_value:.2f}{unit_symbol}"
         return None
 
     def _suggest_decrease_parameter(self, error: str, config: Dict) -> str:
@@ -314,8 +320,9 @@ class ValidationEngine:
             # Find the actual parameter name from display name
             for name, param_def in ConfigurationManager.PARAMETERS.items():
                 if param_def.display_name == param_name:
-                    safe_value = param_def.max_value - 0.5
-                    return f"Decrease {ConfigurationManager.get_parameter_display(name)} to at most {safe_value}"
+                    safe_value = PrecisionHandler.round_value(param_def.max_value - 0.5)
+                    unit_symbol = "°" if param_def.unit == "degrees" else param_def.unit
+                    return f"Set {ConfigurationManager.get_parameter_display(name)} → {safe_value:.2f}{unit_symbol}"
         return None
 
     def _suggest_slot_polygon_fix(self, error: str, config: Dict) -> str:

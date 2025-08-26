@@ -1,9 +1,9 @@
 # Haptic Harness Toolkit Generator
 A software to easily generate parameterized tiles for haptic harnesses
 <p align="center">
- <img src = "images/hexagonExploded.jpg" alt = "Exploded view of hexagonal tile" width="30%">
- <img src = "images/flatView.jpg" alt = "Flat view of tile" width="30%">
- <img src = "images/squareExploded.jpg" alt = "Exploded view of square tile" width="30%">
+ <img src = "haptic_harness_generator/assets/hexagonExploded.jpg" alt = "Exploded view of hexagonal tile" width="30%">
+ <img src = "haptic_harness_generator/assets/flatView.jpg" alt = "Flat view of tile" width="30%">
+ <img src = "haptic_harness_generator/assets/squareExploded.jpg" alt = "Exploded view of square tile" width="30%">
 </p>
 
 ## Description
@@ -56,7 +56,7 @@ If installation fails:
 2. In the "Generate Tiles" tab, click "Generate Parts" to generate the .dxf and .stl files
 3. Generated files can be found in the "exports" directory
 <p align= "center">
-    <img src = "images/hapticsNew.jpg" alt = "Diagram view" width="76%">
+    <img src = "haptic_harness_generator/assets/hapticsNew.jpg" alt = "Diagram view" width="76%">
 </p>
 
 ## Hardware Operation
@@ -72,7 +72,7 @@ If installation fails:
     -   .stl files to be 3D-printed
 -   A tile is constructed by supergluing the cut parts as shown below: 
 <p align="center">
-    <img src = "images/diagramOne.jpg" alt = "Diagram view" width="50%">
+    <img src = "haptic_harness_generator/assets/diagramOne.jpg" alt = "Diagram view" width="50%">
 </p>
 
 ## Dependencies:

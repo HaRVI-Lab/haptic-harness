@@ -9,8 +9,8 @@ This module contains all UI-related functionality including:
 
 from .main_window import MyMainWindow as MainWindow
 from .ui_helpers import (ParameterWidget, ValidationDisplay, ScalingHelper,
-                        PresetSelector, ConfigurationButtons, ParameterCategory)
+                        PresetSelector, ParameterCategory)
 from .styles import Styles
 
 __all__ = ['MainWindow', 'ParameterWidget', 'ValidationDisplay', 'ScalingHelper',
-           'PresetSelector', 'ConfigurationButtons', 'ParameterCategory', 'Styles']
+           'PresetSelector', 'ParameterCategory', 'Styles']

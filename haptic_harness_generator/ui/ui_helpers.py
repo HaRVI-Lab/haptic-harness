@@ -4,6 +4,7 @@ UI helper functions and components
 from PyQt5 import QtWidgets, QtCore, QtGui
 from typing import Dict, List, Optional
 import json
+from haptic_harness_generator.core.precision_handler import PrecisionHandler, format_display
 
 class ParameterWidget(QtWidgets.QWidget):
     """Custom widget for parameter input with validation"""
@@ -27,17 +28,32 @@ class ParameterWidget(QtWidgets.QWidget):
         unit_width = 40
         range_width = 100
 
-        # Label with tooltip using improved display method
+        # Label with tooltip and word wrapping
         from haptic_harness_generator.core.config_manager import ConfigurationManager
 
         label = QtWidgets.QLabel(ConfigurationManager.get_parameter_display(self.param_def.name))
-        label.setToolTip(self.param_def.tooltip)
+        label.setToolTip(f"{self.param_def.name}: {self.param_def.tooltip}")  # Enhanced tooltip
         label.setMinimumWidth(label_width)
         label.setMaximumWidth(label_width)
+        label.setWordWrap(True)  # Enable word wrapping
+        label.setStyleSheet("""
+            QLabel {
+                color: #cccccc;
+                padding: 5px;
+                background-color: #2a2a2a;
+                border-radius: 3px;
+            }
+            QLabel:hover {
+                background-color: #3a3a3a;
+                color: #ffffff;
+            }
+        """)
 
         # Input field
         self.input = QtWidgets.QLineEdit()
-        self.input.setText(str(self.param_def.default_value))
+        # Format initial value with precision
+        formatted_value = PrecisionHandler.round_value(self.param_def.default_value)
+        self.input.setText(f"{formatted_value:.2f}")
         self.input.setMinimumWidth(input_width)
         self.input.setMaximumWidth(input_width)
         self.input.setAlignment(QtCore.Qt.AlignRight)
@@ -56,25 +72,37 @@ class ParameterWidget(QtWidgets.QWidget):
             )
         self.input.setValidator(validator)
 
-        # Unit label
-        unit_label = QtWidgets.QLabel(self.param_def.unit)
+        # Unit label with proper symbols
+        unit_text = self.param_def.unit
+        if unit_text == "degrees":
+            unit_text = "°"
+        elif unit_text == "mm":
+            unit_text = "mm"
+        elif not unit_text or unit_text == "":
+            unit_text = "#"
+
+        unit_label = QtWidgets.QLabel(unit_text)
         unit_label.setMinimumWidth(unit_width)
         unit_label.setMaximumWidth(unit_width)
 
-        # Enhanced range label with color coding
-        range_text = f"{self.param_def.min_value}-{self.param_def.max_value}"
+        # Enhanced range label with improved styling
+        range_text = f"{self.param_def.min_value:.0f}-{self.param_def.max_value:.0f}"
         range_label = QtWidgets.QLabel(range_text)
         range_label.setStyleSheet("""
             QLabel {
                 color: #888888;
                 font-size: 12px;
                 padding: 2px 6px;
-                border: 1px solid #555555;
+                border: 1px solid #3a3a4a;
                 border-radius: 3px;
-                background-color: #2a2a2a;
+                background-color: #2a2a3a;
+            }
+            QLabel:hover {
+                border-color: #4a4a5a;
+                background-color: #3a3a4a;
             }
         """)
-        range_label.setToolTip(f"Valid range: {range_text} {self.param_def.unit}")
+        range_label.setToolTip(f"Ideal range: {range_text} {unit_text}")
         range_label.setMinimumWidth(range_width)
         range_label.setMaximumWidth(range_width)
 
@@ -86,18 +114,39 @@ class ParameterWidget(QtWidgets.QWidget):
 
         self.setLayout(grid)
 
-        # Connect signal with programmatic update check
+        # Connect signals with programmatic update check and precision handling
         self.input.textChanged.connect(self._on_text_changed)
+        self.input.editingFinished.connect(self._on_editing_finished)
 
     def _on_text_changed(self, text):
         """Handle text changes, but only emit signal if not updating programmatically"""
         if not self._updating_programmatically:
             self.parameterChanged.emit(self.param_def.name, text)
+
+    def _on_editing_finished(self):
+        """Apply precision when user finishes editing"""
+        if not self._updating_programmatically:
+            try:
+                value = float(self.input.text())
+                rounded_value = PrecisionHandler.round_value(value)
+
+                # Update display with proper formatting
+                if rounded_value != value:
+                    self._updating_programmatically = True
+                    self.input.setText(f"{rounded_value:.2f}")
+                    self._updating_programmatically = False
+                    # Emit the rounded value
+                    self.parameterChanged.emit(self.param_def.name, str(rounded_value))
+            except ValueError:
+                # Invalid input, let validation handle it
+                pass
     
     def set_value(self, value):
         """Set parameter value programmatically without triggering change signal"""
         self._updating_programmatically = True
-        self.input.setText(str(value))
+        # Apply precision to programmatically set values too
+        rounded_value = PrecisionHandler.round_value(value)
+        self.input.setText(f"{rounded_value:.2f}")
         self._updating_programmatically = False
     
     def get_value(self):
@@ -105,78 +154,165 @@ class ParameterWidget(QtWidgets.QWidget):
         return self.input.text()
     
     def set_error(self, has_error):
-        """Highlight field if it has an error"""
+        """Highlight field if it has an error with enhanced visual states"""
         if has_error:
             self.input.setStyleSheet("""
                 QLineEdit {
                     border: 2px solid #ff4444;
                     background-color: #552222;
+                    color: #ffaaaa;
                 }
             """)
         else:
-            self.input.setStyleSheet("")
+            # Normal state with hover effects
+            self.input.setStyleSheet("""
+                QLineEdit {
+                    border: 1px solid #3a3a4a;
+                    background-color: #2a2a2a;
+                    color: #ffffff;
+                    padding: 3px;
+                    border-radius: 3px;
+                }
+                QLineEdit:hover {
+                    border-color: #4a4a5a;
+                    background-color: #3a3a3a;
+                }
+                QLineEdit:focus {
+                    border-color: #5a5a6a;
+                    background-color: #3a3a3a;
+                }
+            """)
 
 class ValidationDisplay(QtWidgets.QWidget):
-    """Widget to display validation results"""
-    
+    """Smart validation display that hides when valid"""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setup_ui()
-    
+
     def setup_ui(self):
-        layout = QtWidgets.QVBoxLayout()
-        
-        # Status indicator
+        self.main_layout = QtWidgets.QVBoxLayout()
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Status indicator (always visible)
         self.status_label = QtWidgets.QLabel("Status: Not Validated")
-        self.status_label.setStyleSheet("font-weight: bold;")
-        
-        # Error list
-        self.error_list = QtWidgets.QTextEdit()
-        self.error_list.setReadOnly(True)
-        self.error_list.setMaximumHeight(150)
-        
-        # Suggestion box
-        self.suggestion_box = QtWidgets.QTextEdit()
-        self.suggestion_box.setReadOnly(True)
-        self.suggestion_box.setMaximumHeight(100)
-        self.suggestion_box.setStyleSheet("background-color: #2a2a3a;")
-        
-        layout.addWidget(self.status_label)
-        layout.addWidget(QtWidgets.QLabel("Errors:"))
-        layout.addWidget(self.error_list)
-        layout.addWidget(QtWidgets.QLabel("Suggestions:"))
-        layout.addWidget(self.suggestion_box)
-        
-        self.setLayout(layout)
+        self.status_label.setStyleSheet("font-weight: bold; padding: 10px;")
+
+        # Details section (collapsible)
+        self.details_widget = QtWidgets.QWidget()
+        details_layout = QtWidgets.QVBoxLayout()
+
+        # Toggle button for collapsible details
+        self.toggle_btn = QtWidgets.QPushButton("▼ Show Details")
+        self.toggle_btn.setMaximumHeight(30)
+        self.toggle_btn.clicked.connect(self.toggle_details)
+        self.details_expanded = True
+
+        # Error browser with increased height
+        self.details_browser = QtWidgets.QTextBrowser()
+        self.details_browser.setReadOnly(True)
+        self.details_browser.setMaximumHeight(400)  # Increased from 250px
+        self.details_browser.setStyleSheet("""
+            QTextBrowser {
+                background-color: #2a2a2a;
+                border: 1px solid #3a3a4a;
+                border-radius: 5px;
+                padding: 10px;
+                font-family: 'Consolas', 'Monaco', monospace;
+            }
+        """)
+
+        details_layout.addWidget(self.toggle_btn)
+        details_layout.addWidget(self.details_browser)
+        self.details_widget.setLayout(details_layout)
+
+        self.main_layout.addWidget(self.status_label)
+        self.main_layout.addWidget(self.details_widget)
+
+        self.setLayout(self.main_layout)
+
+    def toggle_details(self):
+        """Toggle the details section visibility"""
+        self.details_expanded = not self.details_expanded
+        self.details_browser.setVisible(self.details_expanded)
+        self.toggle_btn.setText("▼ Show Details" if not self.details_expanded else "▲ Hide Details")
     
     def update_validation(self, result):
-        """Update display with validation result"""
+        """Update display with smart validation result"""
         if result.is_valid:
-            self.status_label.setText("Status: ✓ Valid")
-            self.status_label.setStyleSheet("color: #44ff44; font-weight: bold;")
-            self.error_list.clear()
-            self.suggestion_box.clear()
+            self.set_valid_state()
         else:
-            self.status_label.setText(f"Status: ✗ {len(result.errors)} Errors")
-            self.status_label.setStyleSheet("color: #ff4444; font-weight: bold;")
-            
-            # Display errors
-            self.error_list.setPlainText("\n".join(result.errors))
-            
-            # Display suggestions
-            if result.suggestions:
-                self.suggestion_box.setPlainText("\n".join(result.suggestions))
-            else:
-                self.suggestion_box.clear()
-        
-        # Display warnings if any
+            self.set_invalid_state(result)
+
+    def set_valid_state(self):
+        """Hide everything except success message"""
+        self.details_widget.hide()
+        self.setMaximumHeight(60)
+        self.status_label.setText("✅ Configuration Valid - All parameters within acceptable ranges")
+        self.status_label.setStyleSheet("""
+            QLabel {
+                color: #44ff44;
+                font-weight: bold;
+                padding: 15px;
+                background-color: #2a4a2a;
+                border: 1px solid #44ff44;
+                border-radius: 5px;
+            }
+        """)
+
+    def set_invalid_state(self, result):
+        """Show detailed error information"""
+        self.details_widget.show()
+        self.setMaximumHeight(500)  # Allow expansion
+
+        # Update status with descriptive message
+        error_count = len(result.errors)
+        self.status_label.setText(f"Validation Status: {error_count} parameters need adjustment")
+        self.status_label.setStyleSheet("""
+            QLabel {
+                color: #ff4444;
+                font-weight: bold;
+                padding: 10px;
+                background-color: #4a2a2a;
+                border: 1px solid #ff4444;
+                border-radius: 5px;
+            }
+        """)
+
+        # Format detailed content with highlighting
+        content = self._format_validation_content(result)
+        self.details_browser.setHtml(content)
+
+        # Show details by default when invalid
+        self.details_expanded = True
+        self.details_browser.setVisible(True)
+        self.toggle_btn.setText("▲ Hide Details")
+
+    def _format_validation_content(self, result):
+        """Format validation content with proper highlighting and precision"""
+        html_content = []
+
+        if result.errors:
+            html_content.append('<h3 style="color: #ff6666;">❌ Errors:</h3>')
+            for error in result.errors:
+                # Highlight parameter references
+                formatted_error = error.replace('[', '<b style="color: #ffaa66;">[').replace(']', ']</b>')
+                html_content.append(f'<p style="color: #ffcccc; margin-left: 20px;">• {formatted_error}</p>')
+
+        if result.suggestions:
+            html_content.append('<h3 style="color: #66ff66;">💡 Suggestions:</h3>')
+            for suggestion in result.suggestions:
+                # Highlight actionable items and ensure precision formatting
+                formatted_suggestion = suggestion.replace('→', '<b style="color: #66ff66;">→</b>')
+                formatted_suggestion = formatted_suggestion.replace('Set ', '<b style="color: #aaffaa;">Set </b>')
+                html_content.append(f'<p style="color: #ccffcc; margin-left: 20px;">• {formatted_suggestion}</p>')
+
         if result.warnings:
-            warning_text = "WARNINGS:\n" + "\n".join(result.warnings)
-            if result.is_valid:
-                self.error_list.setPlainText(warning_text)
-            else:
-                current_text = self.error_list.toPlainText()
-                self.error_list.setPlainText(current_text + "\n\n" + warning_text)
+            html_content.append('<h3 style="color: #ffaa66;">⚠️ Warnings:</h3>')
+            for warning in result.warnings:
+                html_content.append(f'<p style="color: #ffffcc; margin-left: 20px;">• {warning}</p>')
+
+        return ''.join(html_content)
 
 class ScalingHelper:
     """Helper for DPI scaling"""
@@ -203,44 +339,105 @@ class ScalingHelper:
         return int(base_size * ScalingHelper.get_scale_factor())
 
 class PresetSelector(QtWidgets.QWidget):
-    """Widget for selecting and managing presets"""
-    
+    """Enhanced widget for selecting and managing presets with favorites"""
+
     presetChanged = QtCore.pyqtSignal(str)  # preset name
-    
+
     def __init__(self, presets_dict, parent=None):
         super().__init__(parent)
         self.presets = presets_dict
+        self.favorites = set()  # Track favorite presets
         self.setup_ui()
-    
+
     def setup_ui(self):
         layout = QtWidgets.QHBoxLayout()
-        
-        # Label
-        label = QtWidgets.QLabel("Preset:")
-        label.setMinimumWidth(60)
-        
-        # Dropdown
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Label (always visible in wide mode)
+        self.label = QtWidgets.QLabel("Presets:")
+        self.label.setMinimumWidth(60)
+        self.label.setStyleSheet("color: #cccccc; font-weight: bold;")
+
+        # Enhanced dropdown with styling
         self.combo = QtWidgets.QComboBox()
-        self.combo.addItem("-- Custom --")
-        for preset_name in self.presets.keys():
-            self.combo.addItem(preset_name)
-        
+        self.combo.setMinimumWidth(200)
+        self.combo.setStyleSheet("""
+            QComboBox {
+                background-color: #3a3a3a;
+                border: 1px solid #4a4a4a;
+                border-radius: 5px;
+                padding: 5px;
+                color: #ffffff;
+            }
+            QComboBox:hover {
+                border-color: #5a5a5a;
+                background-color: #4a4a4a;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #cccccc;
+            }
+        """)
+
+        self.populate_combo()
         self.combo.currentTextChanged.connect(self.on_preset_changed)
-        
-        layout.addWidget(label)
+
+        layout.addWidget(self.label)
         layout.addWidget(self.combo)
-        layout.addStretch()
-        
+
         self.setLayout(layout)
-    
+
+    def populate_combo(self):
+        """Populate combo box with favorites separated from regular presets"""
+        self.combo.clear()
+        self.combo.addItem("-- Custom --")
+
+        # Add favorites first (if any)
+        if self.favorites:
+            self.combo.addItem("--- Favorites ---")
+            for preset_name in sorted(self.favorites):
+                if preset_name in self.presets:
+                    self.combo.addItem(f"⭐ {preset_name}")
+
+        # Add separator if we have both favorites and regular presets
+        if self.favorites and len(self.presets) > len(self.favorites):
+            self.combo.addItem("--- All Presets ---")
+
+        # Add regular presets
+        for preset_name in sorted(self.presets.keys()):
+            if preset_name not in self.favorites:
+                self.combo.addItem(preset_name)
+
+
+
     def on_preset_changed(self, preset_name):
         """Handle preset selection change"""
-        if preset_name != "-- Custom --":
-            self.presetChanged.emit(preset_name)
-    
+        # Clean up preset name (remove favorite star and separators)
+        clean_name = preset_name.replace("⭐ ", "").strip()
+
+        if clean_name not in ["-- Custom --", "--- Favorites ---", "--- All Presets ---"]:
+            self.presetChanged.emit(clean_name)
+
     def set_custom(self):
         """Set to custom mode"""
         self.combo.setCurrentText("-- Custom --")
+
+    def add_to_favorites(self, preset_name):
+        """Add preset to favorites"""
+        if preset_name in self.presets:
+            self.favorites.add(preset_name)
+            self.populate_combo()
+
+    def remove_from_favorites(self, preset_name):
+        """Remove preset from favorites"""
+        self.favorites.discard(preset_name)
+        self.populate_combo()
 
 class ConfigurationButtons(QtWidgets.QWidget):
     """Widget for configuration management buttons"""
