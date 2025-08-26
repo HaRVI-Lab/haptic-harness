@@ -18,14 +18,14 @@ Setting up a new Conda environment through the terminal with the correct depende
 ### Step 1: Remove any existing environment (if you've tried before)
 ```bash
 conda deactivate
-conda remove -n hhgenerator --all -y
+conda remove -n hapticHarnessGenerator --all -y
 ```
 
 ### Step 2: Create environment from specification (Cross-Platform Method)
 Create a file called `haptic-env.yml` with this content:
 
 ```yaml
-name: hhgenerator
+name: hapticHarnessGenerator
 channels:
   - defaults
   - conda-forge
@@ -42,7 +42,7 @@ conda env create -f haptic-env.yml
 
 ### Step 3: Activate environment
 ```bash
-conda activate hhgenerator
+conda activate hapticHarnessGenerator
 ```
 
 ### Step 4: Test vtkbool installation and create compatibility fix if needed
@@ -126,7 +126,8 @@ run-haptic-harness --export-dir [your absolute path]
 
 ## Dependencies:
 -   Pyvista
--   vtkbool (installed via conda-forge with compatibility shim)
+-   vtkbool=3.0.1 (pinned version for compatibility)
+-   vtk=9.3.0 (pinned version for compatibility)
 -   ezdxf
 -   Numpy
 -   PyQT5
