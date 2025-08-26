@@ -1,16 +1,35 @@
 from pyvistaqt import QtInteractor, MainWindow
 from PyQt5 import QtCore, QtWidgets, Qt, QtGui, QtWebEngineWidgets
-from .Styles import Styles
-from .Generator import Generator, WorkerWrapper
+try:
+    from .Styles import Styles
+    from .Generator import Generator, WorkerWrapper
+except ImportError:
+    from Styles import Styles
+    from Generator import Generator, WorkerWrapper
 from time import perf_counter
 import re
 import os
 from pyvista import Camera
 import numpy as np
 
+# Import new modular components
+try:
+    from .config_manager import ConfigurationManager
+    from .validation_engine import ValidationEngine
+    from .ui_helpers import (ParameterWidget, ValidationDisplay, ScalingHelper,
+                            PresetSelector, ConfigurationButtons, ParameterCategory)
+except ImportError:
+    from config_manager import ConfigurationManager
+    from validation_engine import ValidationEngine
+    from ui_helpers import (ParameterWidget, ValidationDisplay, ScalingHelper,
+                           PresetSelector, ConfigurationButtons, ParameterCategory)
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 rotate_icon_path = os.path.join(current_dir, "rotateIcon.png")
 anatomy_of_tile_path = os.path.join(current_dir, "hapticsNew.jpg")
+
+# Use ConfigurationManager for presets instead of hardcoded values
+PRESET_CONFIGS = ConfigurationManager.PRESETS
 
 
 class MyMainWindow(MainWindow):
@@ -18,28 +37,45 @@ class MyMainWindow(MainWindow):
     def __init__(self, userDir, parent=None, show=True):
         QtWidgets.QMainWindow.__init__(self, parent)
 
+        # Initialize modular components
+        self.userDir = userDir
+        self.generator = Generator(userDir)
+        self.validator = ValidationEngine()
+        self.parameter_widgets = {}
+        self.parameter_categories = {}
+
+        # Connect generator signals
+        self.generator.signals.progress.connect(self.update_progress)
+        self.generator.signals.finished.connect(self.task_finished)
+        self.threadpool = QtCore.QThreadPool()
+
+        # Apply styling
         styleSheet = Styles()
         super().setStyleSheet(styleSheet.getStyles())
         self.interactorColor = styleSheet.colors["green"]
         self.grayColor = styleSheet.colors["lightGray"]
+
+        # Apply DPI-scaled styles
+        self.apply_scaled_styles()
+
+        # Create main layout
         primaryLayout = Qt.QHBoxLayout()
         self.frame = QtWidgets.QFrame()
         self.plotters = []
-        self.regen_button = QtWidgets.QPushButton("Generate Parts")
-        self.regen_button.setFixedWidth(400)
-        self.regen_button.clicked.connect(self.regen)
+
+        # Progress bar
         self.pbar = QtWidgets.QProgressBar(self)
         self.pbar.setFormat("Initialized")
         self.pbar.setValue(100)
-        self.generator = Generator(userDir)
-        self.generator.signals.progress.connect(self.update_progress)
-        self.generator.signals.finished.connect(self.task_finished)
-        self.threadpool = QtCore.QThreadPool()
+
+        # Data validation checkbox (keep for compatibility)
         self.dataValidationCheckBox = QtWidgets.QCheckBox("Data Validation", self)
         self.dataValidationCheckBox.setChecked(True)
         self.dataValidationCheckBox.clicked.connect(self.setDataValidation)
 
-        primaryLayout.addWidget(self.paramtersPane())
+        # Create main panels
+        self.parameter_panel = self.create_parameter_panel()
+        primaryLayout.addWidget(self.parameter_panel)
         primaryLayout.addWidget(self.createDiagram())
         primaryLayout.addWidget(self.objectsPane(), stretch=4)
 
@@ -49,6 +85,28 @@ class MyMainWindow(MainWindow):
 
         if show:
             self.show()
+
+    def apply_scaled_styles(self):
+        """Apply DPI-scaled styles"""
+        scale = ScalingHelper.get_scale_factor()
+        base_font = ScalingHelper.scale_font(14)
+
+        # Additional styling for modular components
+        style = f"""
+            QWidget {{
+                font-size: {base_font}px;
+            }}
+            QPushButton {{
+                padding: {int(5*scale)}px;
+                border-radius: {int(3*scale)}px;
+            }}
+            QLineEdit {{
+                padding: {int(3*scale)}px;
+            }}
+        """
+        # Apply additional styles without overriding existing ones
+        current_style = self.styleSheet()
+        self.setStyleSheet(current_style + style)
 
     def objectsPane(self):
         scroll_area = QtWidgets.QScrollArea()
@@ -84,8 +142,17 @@ class MyMainWindow(MainWindow):
         label = QtWidgets.QLabel(self)
         pixmap = QtGui.QPixmap(anatomy_of_tile_path)
         pixmap.setDevicePixelRatio(2.0)
+
+        # Use parameter panel width for scaling, with fallback to reasonable default
+        try:
+            panel_width = self.parameter_panel.width() if hasattr(self, 'parameter_panel') else 400
+            # If width is 0 (not yet rendered), use a reasonable default
+            target_width = panel_width * 1.5 if panel_width > 0 else 600
+        except (AttributeError, TypeError):
+            target_width = 600  # Fallback default
+
         scaled_pixmap = pixmap.scaledToWidth(
-            self.entryBox.width() * 1.5, mode=QtCore.Qt.SmoothTransformation
+            int(target_width), mode=QtCore.Qt.SmoothTransformation
         )
         label.setPixmap(scaled_pixmap)
 
@@ -98,181 +165,159 @@ class MyMainWindow(MainWindow):
         scroll_area.setWidget(label)
         return scroll_area
 
-    def paramtersPane(self):
-        self.entryBox = QtWidgets.QScrollArea()
-        scroll = QtWidgets.QWidget()
+    def create_parameter_panel(self):
+        """Create parameter input panel using modular components"""
+        panel = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout()
+        layout.setContentsMargins(20, 20, 30, 20)
 
-        vbox = QtWidgets.QVBoxLayout()
-        vbox.setContentsMargins(20, 20, 30, 20)
+        # Preset selector
+        self.preset_selector = PresetSelector(ConfigurationManager.PRESETS)
+        self.preset_selector.presetChanged.connect(self.load_preset)
+        layout.addWidget(self.preset_selector)
 
-        attributes = self.generator.__dict__
-        parameter_attributes = {
-            "Tile Parameters": [
-                "concentricPolygonRadius",
-                "tactorRadius",
-                "magnetRingRadius",
-                "numSides",
-                "foamThickness",
-                "distanceBetweenMagnetClipAndPolygonEdge",
-                "numMagnetsInRing",
-            ],
-            "Magnet Parameters": [
-                "magnetRadius",
-                "magnetThickness",
-            ],
-            "Clip Parameters": [
-                "slotWidth",
-                "slotHeight",
-                "slotBorderRadius",
-                "magnetClipThickness",
-                "magnetClipRingThickness",
-                "distanceBetweenMagnetsInClip",
-                "distanceBetweenMagnetClipAndSlot",
-            ],
-            "Mount Parameters": [
-                "mountRadius",
-                "mountHeight",
-                "mountShellThickness",
-                "mountBottomAngleOpening",
-                "mountTopAngleOpening",
-                "brim",
-            ],
-            "Strap Clip Parameters": [
-                "strapWidth",
-                "strapThickness",
-                "strapClipThickness",
-                "strapClipRadius",
-                "distanceBetweenStrapsInClip",
-                "strapClipRim",
-            ],
-        }
+        # Add separator
+        separator = QtWidgets.QFrame()
+        separator.setFrameShape(QtWidgets.QFrame.HLine)
+        separator.setFrameShadow(QtWidgets.QFrame.Sunken)
+        layout.addWidget(separator)
 
-        indexed_attrs = {
-            "concentricPolygonRadius": "1",
-            "tactorRadius": "2",
-            "magnetRingRadius": "3",
-            "distanceBetweenMagnetClipAndPolygonEdge": "4",
-            "magnetRadius": "5",
-            "magnetThickness": "6",
-            "slotWidth": "7",
-            "slotHeight": "8",
-            "slotBorderRadius": "9",
-            "magnetClipThickness": "10",
-            "magnetClipRingThickness": "11",
-            "distanceBetweenMagnetsInClip": "12",
-            "distanceBetweenMagnetClipAndSlot": "13",
-            "mountRadius": "14",
-            "mountHeight": "15",
-            "mountShellThickness": "16",
-            "mountBottomAngleOpening": "17",
-            "mountTopAngleOpening": "18",
-            "brim": "19",
-            "strapWidth": "20",
-            "strapThickness": "21",
-            "strapClipThickness": "22",
-            "strapClipRadius": "23",
-            "distanceBetweenStrapsInClip": "24",
-            "strapClipRim": "25",
-        }
+        # Create parameter categories using ConfigurationManager
+        scroll = QtWidgets.QScrollArea()
+        scroll_widget = QtWidgets.QWidget()
+        scroll_layout = QtWidgets.QVBoxLayout()
 
-        unitless = ["numMagnetsInRing", "numSides"]
-        degrees = ["mountBottomAngleOpening", "mountTopAngleOpening"]
-        for header, params in parameter_attributes.items():
-            temp_box = QtWidgets.QVBoxLayout()
-            temp_box.setAlignment(QtCore.Qt.AlignVCenter)
-            header = QtWidgets.QLabel(header, objectName="parameterHeader")
-            header.setAlignment(QtCore.Qt.AlignLeft)
-            temp_box.addWidget(header)
-            for attributeKey in params:
-                attributeVal = attributes[attributeKey]
-                hbox = QtWidgets.QHBoxLayout()
-                formattedAttributeName = re.sub(
-                    r"(?<!^)(?=[A-Z])", " ", attributeKey
-                ).title()
-                if attributeKey in indexed_attrs.keys():
-                    formattedAttributeName = (
-                        f"[{indexed_attrs[attributeKey]}] " + formattedAttributeName
-                    )
-                if attributeKey in degrees:
-                    formattedAttributeName += " (degrees)"
-                elif attributeKey in unitless:
-                    pass
-                else:
-                    formattedAttributeName += " (mm)"
-                label = QtWidgets.QLabel(formattedAttributeName)
-                label.setMaximumWidth(300)
-                text_width = label.fontMetrics().boundingRect(label.text()).width()
-                if text_width > 250:
-                    label.setFixedHeight(50)
-                label.setWordWrap(True)
-                label.setSizePolicy(
-                    QtWidgets.QSizePolicy.Preferred,  # 3) Allow vertical expansion
-                    QtWidgets.QSizePolicy.Preferred,
-                )
-                if attributeKey == "numSides" or attributeKey == "numMagnetsInRing":
-                    le = QtWidgets.QLineEdit()
-                    le.setValidator(
-                        QtGui.QRegularExpressionValidator(
-                            QtCore.QRegularExpression("^\d+$")
-                        )
-                    )
-                    le.setText(str(attributeVal))
-                elif (
-                    attributeKey == "mountBottomAngleOpening"
-                    or attributeKey == "mountTopAngleOpening"
-                ):
-                    le = QtWidgets.QLineEdit()
-                    le.setValidator(
-                        QtGui.QRegularExpressionValidator(
-                            QtCore.QRegularExpression("^\d+(\.\d+)?$")
-                        )
-                    )
-                    le.setText(str(round(attributeVal * 180 / np.pi, 2)))
-                else:
-                    le = QtWidgets.QLineEdit()
-                    le.setValidator(
-                        QtGui.QRegularExpressionValidator(
-                            QtCore.QRegularExpression("^\d+(\.\d+)?$")
-                        )
-                    )
-                    le.setText(str(attributeVal))
-                le.textChanged.connect(
-                    lambda value, attributeKey=attributeKey: self.setGeneratorAttribute(
-                        attributeKey, value
-                    )
-                )
-                le.setFixedWidth(100)
-                hbox.addWidget(label)
-                hbox.addWidget(le)
-                temp_box.addLayout(hbox)
-            vbox.addLayout(temp_box)
+        # Group parameters by category
+        categories = {}
+        for param_name, param_def in ConfigurationManager.PARAMETERS.items():
+            if param_def.category not in categories:
+                categories[param_def.category] = []
+            categories[param_def.category].append((param_name, param_def))
 
-        vbox.addWidget(self.dataValidationCheckBox)
+        # Create parameter widgets by category
+        for category_name, params in categories.items():
+            category_widget = ParameterCategory(category_name, params)
+            self.parameter_categories[category_name] = category_widget
 
-        label = QtWidgets.QLabel(
+            # Connect parameter change signals
+            for param_name, widget in category_widget.get_parameter_widgets().items():
+                widget.parameterChanged.connect(self.on_parameter_changed)
+                self.parameter_widgets[param_name] = widget
+
+            scroll_layout.addWidget(category_widget)
+
+            # Add separator between categories
+            separator = QtWidgets.QFrame()
+            separator.setFrameShape(QtWidgets.QFrame.HLine)
+            separator.setFrameShadow(QtWidgets.QFrame.Sunken)
+            scroll_layout.addWidget(separator)
+
+
+        # Validation display
+        self.validation_display = ValidationDisplay()
+        scroll_layout.addWidget(self.validation_display)
+
+        # Configuration buttons
+        self.config_buttons = ConfigurationButtons()
+        self.config_buttons.validateRequested.connect(self.validate_configuration)
+        self.config_buttons.generateRequested.connect(self.generate_parts)
+        self.config_buttons.exportRequested.connect(self.export_configuration)
+        self.config_buttons.importRequested.connect(self.import_configuration)
+        scroll_layout.addWidget(self.config_buttons)
+
+        # Data validation checkbox (keep for compatibility)
+        scroll_layout.addWidget(self.dataValidationCheckBox)
+
+        # Info labels
+        info_label = QtWidgets.QLabel(
             '<p style="color: #999999; font-size: 16px; font-style: italic;">2D file type is .dxf; 3D file type is .stl</p>'
         )
-        label.setAlignment(QtCore.Qt.AlignCenter)
-        label.setOpenExternalLinks(True)
-        vbox.addWidget(label)
+        info_label.setAlignment(QtCore.Qt.AlignCenter)
+        scroll_layout.addWidget(info_label)
 
-        vbox.addWidget(self.regen_button, alignment=QtCore.Qt.AlignHCenter)
-
-        label = QtWidgets.QLabel(
+        github_label = QtWidgets.QLabel(
             '<a href="https://github.com/HaRVI-Lab/haptic-harness" style="color: #339955; font-size: 16px;">Instructions on GitHub</a>'
         )
-        label.setAlignment(QtCore.Qt.AlignCenter)
-        label.setOpenExternalLinks(True)
-        vbox.addWidget(label)
+        github_label.setAlignment(QtCore.Qt.AlignCenter)
+        github_label.setOpenExternalLinks(True)
+        scroll_layout.addWidget(github_label)
 
-        scroll.setLayout(vbox)
-        scroll.adjustSize()
-        self.entryBox.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-        self.entryBox.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.entryBox.setWidgetResizable(True)
-        self.entryBox.setWidget(scroll)
-        # self.entryBox.setFixedWidth(scroll.width())
-        return self.entryBox
+        # Setup scroll area
+        scroll_widget.setLayout(scroll_layout)
+        scroll.setWidget(scroll_widget)
+        scroll.setWidgetResizable(True)
+        scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
+        layout.addWidget(scroll)
+        panel.setLayout(layout)
+
+        return panel
+
+    def on_parameter_changed(self, param_name, value):
+        """Handle parameter value changes"""
+        self.setGeneratorAttribute(param_name, value)
+        self.preset_selector.set_custom()  # Switch to custom mode
+
+    def load_preset(self, preset_name):
+        """Load a preset configuration"""
+        if preset_name in ConfigurationManager.PRESETS:
+            config = ConfigurationManager.PRESETS[preset_name]
+
+            # Update all parameter widgets
+            for category_widget in self.parameter_categories.values():
+                category_widget.set_values(config)
+
+            # Apply to generator
+            for param_name, value in config.items():
+                if hasattr(self.generator, param_name):
+                    # Handle angle conversions
+                    if param_name in ["mountBottomAngleOpening", "mountTopAngleOpening"]:
+                        value = value * np.pi / 180  # Convert to radians
+                    setattr(self.generator, param_name, value)
+
+            # Update display
+            self.grayOutPlotters()
+            self.pbar.setValue(0)
+            self.pbar.setFormat("Preset Loaded - Ready to Generate")
+
+            # Auto-validate
+            self.validate_configuration()
+
+    def validate_configuration(self):
+        """Validate current configuration"""
+        # Gather current values from all categories
+        config = {}
+        for category_widget in self.parameter_categories.values():
+            config.update(category_widget.get_values())
+
+        # Validate using the validation engine
+        result = self.validator.validate_complete(config)
+
+        # Update validation display
+        self.validation_display.update_validation(result)
+
+        # Highlight error fields
+        for param_name, widget in self.parameter_widgets.items():
+            widget.set_error(param_name in result.affected_parameters)
+
+        # Enable/disable generate button
+        self.config_buttons.set_generate_enabled(result.is_valid)
+
+        return result.is_valid
+
+    def generate_parts(self):
+        """Generate parts if configuration is valid"""
+        if not self.validate_configuration():
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Validation Failed",
+                "Please fix validation errors before generating."
+            )
+            return
+
+        # Use the existing regen method
+        self.regen()
 
     def initTilePane(self):
         interactors_layout = QtWidgets.QHBoxLayout()
@@ -470,3 +515,93 @@ class MyMainWindow(MainWindow):
             msg.setWindowTitle("Validation Error")
             msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
             retval = msg.exec_()
+
+
+
+    def export_configuration(self):
+        """Export current configuration using ConfigurationManager"""
+        from PyQt5.QtWidgets import QFileDialog
+
+        # Gather current configuration from parameter widgets
+        config = {}
+        for category_widget in self.parameter_categories.values():
+            config.update(category_widget.get_values())
+
+        # Handle angle conversions for export (convert radians to degrees)
+        for param_name in ["mountBottomAngleOpening", "mountTopAngleOpening"]:
+            if param_name in config:
+                # Get the actual value from generator (which is in radians)
+                generator_value = getattr(self.generator, param_name, 0)
+                config[param_name] = generator_value * 180 / np.pi
+
+        # Get filename from user
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Configuration",
+            f"{self.userDir}/config.json",
+            "JSON Files (*.json)"
+        )
+
+        if filename:
+            success = ConfigurationManager.export_config(config, filename)
+
+            if success:
+                QtWidgets.QMessageBox.information(
+                    self,
+                    "Export Successful",
+                    f"Configuration exported to {filename}"
+                )
+            else:
+                QtWidgets.QMessageBox.critical(
+                    self,
+                    "Export Failed",
+                    "Failed to export configuration. Check file permissions."
+                )
+
+    def import_configuration(self):
+        """Import configuration using ConfigurationManager"""
+        from PyQt5.QtWidgets import QFileDialog
+
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import Configuration",
+            self.userDir,
+            "JSON Files (*.json)"
+        )
+
+        if filename:
+            config = ConfigurationManager.import_config(filename)
+
+            if config is not None:
+                # Update parameter widgets
+                for category_widget in self.parameter_categories.values():
+                    category_widget.set_values(config)
+
+                # Apply to generator
+                for param_name, value in config.items():
+                    if hasattr(self.generator, param_name):
+                        # Handle angle conversions
+                        if param_name in ["mountBottomAngleOpening", "mountTopAngleOpening"]:
+                            value = value * np.pi / 180  # Convert to radians
+                        setattr(self.generator, param_name, value)
+
+                # Update UI
+                self.grayOutPlotters()
+                self.pbar.setValue(0)
+                self.pbar.setFormat("Configuration Imported - Ready to Generate")
+
+                # Switch to custom mode and validate
+                self.preset_selector.set_custom()
+                self.validate_configuration()
+
+                QtWidgets.QMessageBox.information(
+                    self,
+                    "Import Successful",
+                    "Configuration imported successfully"
+                )
+            else:
+                QtWidgets.QMessageBox.critical(
+                    self,
+                    "Import Failed",
+                    "Failed to import configuration. Check file format and try again."
+                )

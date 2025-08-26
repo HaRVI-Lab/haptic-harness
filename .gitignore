@@ -4,3 +4,43 @@ build/
 dist/
 exports/
 .DS_Store
+
+# Test outputs and temporary files
+test_outputs/
+test_report_*.json
+*.tmp
+*.temp
+temp_*
+/tmp/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+Thumbs.db
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Python cache and compiled files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Configuration files that might contain sensitive data
+config_exports/
+user_configs/

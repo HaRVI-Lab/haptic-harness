@@ -1,5 +1,5 @@
 import sys
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore
 from .GUI import MyMainWindow
 import os
 import argparse
@@ -31,6 +31,12 @@ def run_app():
         sys.exit(1)
 
     print("The software may take a minute before startup...")
+
+    # Enable high DPI scaling and WebEngine support before creating QApplication
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts, True)
+
     app = QtWidgets.QApplication(sys.argv)
     window = MyMainWindow(userDir=export_dir)
     sys.exit(app.exec_())

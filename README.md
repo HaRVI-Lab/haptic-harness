@@ -10,7 +10,35 @@ A software to easily generate parameterized tiles for haptic harnesses
 -   This software allows researchers to create an easy haptic harness by generating a tile solution
 -   Researchers can change harness parameters to meet their needs
 
-## Getting Started
+## Installation
+
+### Option 1: Install from PyPI (Stable Release)
+```bash
+pip install haptic-harness-generator
+```
+
+### Option 2: Install from GitHub (Latest Development)
+```bash
+pip install git+https://github.com/HaRVI-Lab/haptic-harness.git
+```
+
+### Option 3: Development Installation (Editable)
+```bash
+git clone https://github.com/HaRVI-Lab/haptic-harness.git
+cd haptic-harness
+pip install -e .
+```
+
+### Running the Application
+```bash
+# After installation, run with:
+run-haptic-harness --export-dir /path/to/export/folder
+
+# Example:
+run-haptic-harness --export-dir ~/haptic-exports
+```
+
+## Getting Started (Alternative Conda Environment Setup)
 Setting up a new Conda environment through the terminal with the correct list of dependencies:
 
 **IMPORTANT**: Use this tested cross-platform approach for reliable installation on any system:
