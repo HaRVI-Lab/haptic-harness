@@ -119,27 +119,127 @@ class ParameterWidget(QtWidgets.QWidget):
         self.input.editingFinished.connect(self._on_editing_finished)
 
     def _on_text_changed(self, text):
-        """Handle text changes, but only emit signal if not updating programmatically"""
+        """Handle text changes with improved validation for incomplete decimal inputs"""
         if not self._updating_programmatically:
+            # Always emit the signal - let the generator handle validation gracefully
             self.parameterChanged.emit(self.param_def.name, text)
 
-    def _on_editing_finished(self):
-        """Apply precision when user finishes editing"""
-        if not self._updating_programmatically:
-            try:
-                value = float(self.input.text())
-                rounded_value = PrecisionHandler.round_value(value)
+            # Provide visual feedback for invalid inputs
+            self._update_input_styling(text)
 
-                # Update display with proper formatting
-                if rounded_value != value:
+    def _on_editing_finished(self):
+        """Apply precision when user finishes editing with enhanced error handling"""
+        if not self._updating_programmatically:
+            text = self.input.text().strip()
+
+            # Handle incomplete decimal inputs gracefully
+            processed_text = self._preprocess_decimal_input(text)
+
+            try:
+                if processed_text is not None:
+                    value = float(processed_text)
+                    rounded_value = PrecisionHandler.round_value(value)
+
+                    # Update display with proper formatting
                     self._updating_programmatically = True
                     self.input.setText(f"{rounded_value:.2f}")
                     self._updating_programmatically = False
+
                     # Emit the rounded value
                     self.parameterChanged.emit(self.param_def.name, str(rounded_value))
+
+                    # Clear any error styling
+                    self.input.setStyleSheet("")
+                else:
+                    # Input is incomplete but valid (like just ".")
+                    # Don't change the display, just clear error styling
+                    self.input.setStyleSheet("")
             except ValueError:
-                # Invalid input, let validation handle it
-                pass
+                # Invalid input - provide visual feedback but don't crash
+                self._show_input_error()
+
+    def _preprocess_decimal_input(self, text):
+        """
+        Preprocess decimal input to handle common incomplete formats.
+
+        Args:
+            text: Raw input text
+
+        Returns:
+            Processed text ready for float conversion, or None if incomplete
+        """
+        if not text:
+            return None
+
+        # Handle incomplete decimal inputs
+        if text == ".":
+            # Just a decimal point - incomplete input
+            return None
+        elif text.startswith(".") and len(text) > 1:
+            # Starts with decimal point like ".1" - prepend zero
+            return "0" + text
+        elif text.endswith(".") and len(text) > 1:
+            # Ends with decimal point like "1." - valid for float conversion
+            return text
+        elif text.count('.') > 1:
+            # Multiple decimal points - invalid
+            return None
+        else:
+            # Regular input
+            return text
+
+    def _update_input_styling(self, text):
+        """Update input field styling based on validation state"""
+        if self._is_valid_partial_input(text):
+            # Valid or acceptable partial input - clear any error styling
+            self.input.setStyleSheet("")
+        else:
+            # Invalid input - show subtle warning
+            self._show_input_warning()
+
+    def _is_valid_partial_input(self, text):
+        """Check if input is valid or an acceptable partial input during typing"""
+        if not text:
+            return True  # Empty is acceptable
+
+        # Allow single decimal point (user is typing)
+        if text == ".":
+            return True
+
+        # Allow leading decimal point with digits
+        if text.startswith(".") and len(text) > 1:
+            try:
+                float("0" + text)
+                return True
+            except ValueError:
+                return False
+
+        # Allow trailing decimal point
+        if text.endswith(".") and len(text) > 1:
+            try:
+                float(text)
+                return True
+            except ValueError:
+                return False
+
+        # Check for multiple decimal points
+        if text.count('.') > 1:
+            return False
+
+        # Try to parse as float
+        try:
+            float(text)
+            return True
+        except ValueError:
+            return False
+
+    def _show_input_warning(self):
+        """Show subtle warning styling for invalid input"""
+        self.input.setStyleSheet("QLineEdit { border: 1px solid orange; }")
+
+    def _show_input_error(self):
+        """Show error styling for invalid input"""
+        self.input.setStyleSheet("QLineEdit { border: 2px solid red; background-color: #ffe6e6; }")
     
     def set_value(self, value):
         """Set parameter value programmatically without triggering change signal"""

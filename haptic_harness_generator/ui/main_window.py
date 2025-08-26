@@ -390,14 +390,20 @@ class MyMainWindow(MainWindow):
         return panel
 
     def on_parameter_changed(self, param_name, value):
-        """Handle parameter value changes"""
-        self.setGeneratorAttribute(param_name, value)
-        # Only switch to custom if this is a user edit, not programmatic update
-        if not self.parameter_widgets[param_name]._updating_programmatically:
-            self.preset_selector.set_custom()  # Switch to custom mode
-            # Debounced validation - wait 500ms after last change
-            self.validation_timer.stop()
-            self.validation_timer.start(500)
+        """Handle parameter value changes with robust error handling"""
+        try:
+            self.setGeneratorAttribute(param_name, value)
+            # Only switch to custom if this is a user edit, not programmatic update
+            if not self.parameter_widgets[param_name]._updating_programmatically:
+                self.preset_selector.set_custom()  # Switch to custom mode
+                # Debounced validation - wait 500ms after last change
+                self.validation_timer.stop()
+                self.validation_timer.start(500)
+        except Exception as e:
+            # Log the error but don't crash the application
+            print(f"Warning: Failed to update parameter {param_name} with value '{value}': {e}")
+            # The parameter widget will handle visual feedback
+            pass
 
     def load_preset(self, preset_name):
         """Load a preset configuration"""
@@ -585,10 +591,19 @@ class MyMainWindow(MainWindow):
         return frame
 
     def setGeneratorAttribute(self, attrName, val):
-        self.generator.customSetAttr(attrName=attrName, val=val)
-        self.grayOutPlotters()
-        self.pbar.setValue(0)
-        self.pbar.setFormat("Ready to Generate")
+        """Set generator attribute with error handling for invalid inputs"""
+        try:
+            self.generator.customSetAttr(attrName=attrName, val=val)
+            self.grayOutPlotters()
+            self.pbar.setValue(0)
+            self.pbar.setFormat("Ready to Generate")
+        except Exception as e:
+            # Log the error but don't crash the application
+            print(f"Warning: Failed to set generator attribute {attrName} to '{val}': {e}")
+            # Keep the UI in a consistent state
+            self.pbar.setFormat("Parameter Error - Check Input")
+            # Don't update the plotters if there was an error
+            pass
 
     def grayOutPlotters(self):
         opacity = 0.7
