@@ -482,8 +482,7 @@ class MyMainWindow(MainWindow):
         self.pbar.setFormat(progress_labels[value])
 
     def task_finished(self):
-        self.regen_button.setEnabled(True)
-        self.regen_button.setStyleSheet("background-color: #333333")
+        self.config_buttons.set_generate_enabled(True)
         for i, pl in enumerate(self.plotters[:3]):
             pl.clear_actors()
             pl.add_mesh(
@@ -505,8 +504,7 @@ class MyMainWindow(MainWindow):
         if self.dataValidationCheckBox.isChecked():
             messages = self.generator.validate()
         if len(messages) == 0:
-            self.regen_button.setEnabled(False)
-            self.regen_button.setStyleSheet("background-color: #777777")
+            self.config_buttons.set_generate_enabled(False)
             self.threadpool.start(WorkerWrapper(self.generator))
         else:
             msg = QtWidgets.QMessageBox()
