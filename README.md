@@ -13,53 +13,49 @@ A software to easily generate parameterized tiles for haptic harnesses
 ## Getting Started
 Setting up a new Conda environment through the terminal with the correct dependencies:
 
-**IMPORTANT**: The `vtkbool` package has installation issues on most platforms. Follow these tested instructions for a working setup:
+**IMPORTANT**: Use this tested cross-platform approach for reliable installation on any system:
 
 ### Step 1: Remove any existing environment (if you've tried before)
 ```bash
 conda deactivate
-conda remove -n hhgen --all -y
+conda remove -n hhgenerator --all -y
 ```
 
-### Step 2: Create fresh environment with VTK only
+### Step 2: Create environment from specification (Cross-Platform Method)
+Create a file called `haptic-env.yml` with this content:
 
-#### For Windows (64-bit)
+```yaml
+name: hhgenerator
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9
+  - vtk
+  - vtkbool
+```
+
+Then create the environment:
 ```bash
-conda create -n hhgen python=3.9 vtk -c conda-forge --platform win-64 -y
+conda env create -f haptic-env.yml
 ```
 
-#### For Linux (64-bit)
+### Step 3: Activate environment
 ```bash
-conda create -n hhgen python=3.9 vtk -c conda-forge --platform linux-64 -y
+conda activate hhgenerator
 ```
 
-#### For Intel Mac (64-bit)
+### Step 4: Test vtkbool installation and create compatibility fix if needed
+
+First, test if vtkbool works with the expected import:
 ```bash
-conda create -n hhgen python=3.9 vtk -c conda-forge --platform osx-64 -y
+python -c "from vtkbool.vtkBool import vtkPolyDataBooleanFilter; print('vtkbool working')"
 ```
 
-#### For Apple Silicon Mac (M1/M2/M3)
-```bash
-conda create -n hhgen python=3.9 vtk -c conda-forge --platform osx-arm64 -y
-```
-
-### Step 3: Activate environment and install packages
-```bash
-conda activate hhgen
-```
-
-### Step 4: Install vtkbool using conda-forge
-```bash
-conda install vtkbool -c conda-forge -y
-```
-
-### Step 5: Create compatibility fix for import paths
-The conda-forge version uses `vtkbool.vtkbool` imports, but this application expects `vtkbool.vtkBool`. Run this compatibility fix:
-
+**If you get an import error**, create the compatibility fix:
 ```bash
 python -c "
 import os
-import sys
 import vtkbool
 
 # Find the vtkbool package location
@@ -76,15 +72,14 @@ print('✓ Created vtkBool compatibility module')
 "
 ```
 
-### Step 6: Install the haptic harness generator
+Then test again:
 ```bash
-pip install haptic_harness_generator
+python -c "from vtkbool.vtkBool import vtkPolyDataBooleanFilter; print('vtkbool working')"
 ```
 
-### Step 7: Verify installation
-Test that everything works:
+### Step 5: Install the haptic harness generator
 ```bash
-python -c "from vtkbool.vtkBool import vtkPolyDataBooleanFilter; print('vtkbool import working')"
+pip install haptic_harness_generator
 ```
 
 > [!WARNING]  
