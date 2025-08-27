@@ -1752,7 +1752,7 @@ class Generator(QRunnable):
                 )
             )
             magnet = self.polygonalPrism(
-                radius=self.magnetRadius + 0.5,  # Added 0.5mm tolerance
+                radius=self.magnetRadius,  #removed the extra 0.5mm tolerance
                 res=20,
                 height=self.magnetThickness,
                 origin=magnetOrigin,
