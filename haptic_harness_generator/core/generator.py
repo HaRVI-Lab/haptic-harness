@@ -1734,7 +1734,7 @@ class Generator(QRunnable):
                 )
             )
             magnetHolder = self.polygonalPrism(
-                radius=self.magnetRadius + self.magnetClipRingThickness + 0.5,  # Added 0.5mm tolerance
+                radius=self.magnetRadius + self.magnetClipRingThickness + 0.25,  # Added 0.25mm tolerance
                 res=20,
                 height=self.magnetThickness,
                 origin=magnetOrigin,

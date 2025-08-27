@@ -609,6 +609,57 @@ class ConfigurationManager:
             return False
 
     @classmethod
+    def auto_save_config(cls, config: Dict, target_dir: str) -> bool:
+        """
+        Auto-save configuration to the target directory with generation metadata.
+
+        Args:
+            config: Configuration dictionary to save
+            target_dir: Target directory where generation files are being saved
+
+        Returns:
+            bool: True if save was successful, False otherwise
+        """
+        import os
+
+        # Create filename with timestamp for uniqueness
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"config_generation_{timestamp}.json"
+        filepath = os.path.join(target_dir, filename)
+
+        # Also save as config.json (latest configuration)
+        latest_filepath = os.path.join(target_dir, "config.json")
+
+        # Prepare export data with generation-specific metadata
+        export_data = {
+            "version": "3.0",
+            "parameters": config,
+            "metadata": {
+                "created": str(datetime.now()),
+                "validated": cls.validate_config(config)[0],
+                "auto_saved": True,
+                "generation_timestamp": timestamp,
+                "purpose": "Auto-saved configuration for generation run"
+            }
+        }
+
+        try:
+            # Save timestamped version
+            with open(filepath, 'w') as f:
+                json.dump(export_data, f, indent=4)
+
+            # Save as latest config.json
+            with open(latest_filepath, 'w') as f:
+                json.dump(export_data, f, indent=4)
+
+            print(f"Configuration auto-saved to: {filepath}")
+            print(f"Latest configuration saved to: {latest_filepath}")
+            return True
+        except Exception as e:
+            print(f"Auto-save failed: {e}")
+            return False
+
+    @classmethod
     def import_config(cls, filepath: str) -> Optional[Dict]:
         """Import and validate configuration"""
         try:
