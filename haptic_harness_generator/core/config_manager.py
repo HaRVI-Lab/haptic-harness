@@ -611,7 +611,11 @@ class ConfigurationManager:
     @classmethod
     def auto_save_config(cls, config: Dict, target_dir: str) -> bool:
         """
-        Auto-save configuration to the target directory with generation metadata.
+        Auto-save configuration to the target directory with organized file structure.
+
+        Creates:
+        - target_dir/config.json (latest configuration)
+        - target_dir/_autosave/config_generation_YYYYMMDD_HHMMSS.json (timestamped history)
 
         Args:
             config: Configuration dictionary to save
@@ -625,9 +629,17 @@ class ConfigurationManager:
         # Create filename with timestamp for uniqueness
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"config_generation_{timestamp}.json"
-        filepath = os.path.join(target_dir, filename)
 
-        # Also save as config.json (latest configuration)
+        # Create _autosave subdirectory for timestamped files
+        autosave_dir = os.path.join(target_dir, "_autosave")
+        try:
+            os.makedirs(autosave_dir, exist_ok=True)
+        except OSError as e:
+            print(f"Failed to create _autosave directory: {e}")
+            return False
+
+        # File paths
+        timestamped_filepath = os.path.join(autosave_dir, filename)
         latest_filepath = os.path.join(target_dir, "config.json")
 
         # Prepare export data with generation-specific metadata
@@ -644,15 +656,15 @@ class ConfigurationManager:
         }
 
         try:
-            # Save timestamped version
-            with open(filepath, 'w') as f:
+            # Save timestamped version to _autosave subdirectory
+            with open(timestamped_filepath, 'w') as f:
                 json.dump(export_data, f, indent=4)
 
-            # Save as latest config.json
+            # Save as latest config.json in main directory
             with open(latest_filepath, 'w') as f:
                 json.dump(export_data, f, indent=4)
 
-            print(f"Configuration auto-saved to: {filepath}")
+            print(f"Configuration auto-saved to: {timestamped_filepath}")
             print(f"Latest configuration saved to: {latest_filepath}")
             return True
         except Exception as e:

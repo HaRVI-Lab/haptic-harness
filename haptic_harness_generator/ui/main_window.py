@@ -480,6 +480,30 @@ class MyMainWindow(MainWindow):
             )
             return
 
+        # Auto-save configuration before generation
+        try:
+            current_config = self.get_current_configuration()
+            success = ConfigurationManager.auto_save_config(current_config, self.userDir)
+
+            if success:
+                # Update progress bar to show auto-save success
+                self.pbar.setFormat("Configuration auto-saved - Starting generation...")
+            else:
+                # Show warning but don't stop generation
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Auto-save Warning",
+                    "Failed to auto-save configuration, but generation will continue."
+                )
+        except Exception as e:
+            # Log error but don't stop generation
+            print(f"Auto-save error: {e}")
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Auto-save Warning",
+                f"Failed to auto-save configuration: {str(e)}\nGeneration will continue."
+            )
+
         # Use the existing regen method
         self.regen()
 
@@ -691,10 +715,13 @@ class MyMainWindow(MainWindow):
 
 
 
-    def export_configuration(self):
-        """Export current configuration using ConfigurationManager"""
-        from PyQt5.QtWidgets import QFileDialog
+    def get_current_configuration(self):
+        """
+        Collect current configuration state from all parameter widgets.
 
+        Returns:
+            dict: Current configuration with proper type conversions and angle handling
+        """
         # Gather current configuration from parameter widgets
         config = {}
         for category_widget in self.parameter_categories.values():
@@ -706,6 +733,15 @@ class MyMainWindow(MainWindow):
                 # Get the actual value from generator (which is in radians)
                 generator_value = getattr(self.generator, param_name, 0)
                 config[param_name] = generator_value * 180 / np.pi
+
+        return config
+
+    def export_configuration(self):
+        """Export current configuration using ConfigurationManager"""
+        from PyQt5.QtWidgets import QFileDialog
+
+        # Use the helper method to get current configuration
+        config = self.get_current_configuration()
 
         # Get filename from user
         filename, _ = QFileDialog.getSaveFileName(
