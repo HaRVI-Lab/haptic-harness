@@ -420,6 +420,9 @@ class MyMainWindow(MainWindow):
                     # Handle angle conversions
                     if param_name in ["mountBottomAngleOpening", "mountTopAngleOpening"]:
                         value = value * np.pi / 180  # Convert to radians
+                    # Ensure integer parameters are actually integers
+                    elif param_name in ["numSides", "numMagnetsInRing"]:
+                        value = int(value)
                     setattr(self.generator, param_name, value)
 
             # Update display
@@ -792,6 +795,9 @@ class MyMainWindow(MainWindow):
                         # Handle angle conversions
                         if param_name in ["mountBottomAngleOpening", "mountTopAngleOpening"]:
                             value = value * np.pi / 180  # Convert to radians
+                        # Ensure integer parameters are always integers
+                        elif param_name in ["numSides", "numMagnetsInRing"]:
+                            value = int(value)
                         setattr(self.generator, param_name, value)
 
                 # Update UI

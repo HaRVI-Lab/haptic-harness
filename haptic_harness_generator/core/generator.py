@@ -57,7 +57,11 @@ class Generator(QRunnable):
         if ConfigurationManager:
             # Use ConfigurationManager defaults
             for param_name, param_def in ConfigurationManager.PARAMETERS.items():
-                setattr(self, param_name, param_def.default_value)
+                value = param_def.default_value
+                # Ensure integer parameters are actually integers
+                if param_name in ["numSides", "numMagnetsInRing"]:
+                    value = int(value)
+                setattr(self, param_name, value)
 
             # Handle angle conversions (ConfigurationManager stores in degrees, Generator uses radians)
             self.mountBottomAngleOpening = 60 * np.pi / 180  # 60 degrees to radians
@@ -470,12 +474,12 @@ class Generator(QRunnable):
         lines = []
         # polygon side
         polygonSideHalf = self.concentricPolygonRadius * np.tan(theta / 2)
-        lines.append(
-            (
-                [polygonSideHalf, self.concentricPolygonRadius],
-                [-1 * polygonSideHalf, self.concentricPolygonRadius],
-            )
-        )
+        #lines.append(
+        #    (
+        #        [polygonSideHalf, self.concentricPolygonRadius],
+        #        [-1 * polygonSideHalf, self.concentricPolygonRadius],
+        #    )
+        #)
 
         # magnet clip holes
         resolution = 30
