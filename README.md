@@ -23,11 +23,17 @@ A software to easily generate parameterized tiles for haptic harnesses
    cd haptic-harness
    ```
 
-2. Create conda environment:
+2. Create conda environment (Windows and Linux users):
    ```bash
    conda env create -f environment-locked.yml
    conda activate hhgen
    ```
+   For Mac users with M-series chips:
+   ```bash
+   CONDA_SUBDIR=osx-64 conda env create -f environment-locked.yml
+   conda activate hhgen
+   ```
+
 
 3. Install package in development mode:
    ```bash
