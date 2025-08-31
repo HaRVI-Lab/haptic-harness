@@ -17,6 +17,8 @@ from logging import currentframe
 from PyQt5.QtCore import ws
 from ezdxf.layouts import base
 from ezdxf.math.bulge import angle
+from ezdxf.addons.drawing import Frontend, RenderContext
+from ezdxf.addons.drawing import layout, svg
 import numpy as np
 import pyvista as pv
 import ezdxf
@@ -65,7 +67,7 @@ class Generator(QRunnable):
 
             # Handle angle conversions (ConfigurationManager stores in degrees, Generator uses radians)
             self.mountBottomAngleOpening = 60 * np.pi / 180  # 60 degrees to radians
-            self.mountTopAngleOpening = 45 * np.pi / 180    # 45 degrees to radians
+            self.mountTopAngleOpening = 45 * np.pi / 180  # 45 degrees to radians
         else:
             # Fallback to original hardcoded values
             self.concentricPolygonRadius = 30
@@ -191,7 +193,9 @@ class Generator(QRunnable):
         ]
 
         if self.numSides < 3 or self.numSides > 8:
-            messages.append("Number of sides must be 3-8. (2-sided creates unstable geometry). Recommended: 4 or 6 sides for wrist devices.")
+            messages.append(
+                "Number of sides must be 3-8. (2-sided creates unstable geometry). Recommended: 4 or 6 sides for wrist devices."
+            )
 
         for attr, val in vars(self).items():
             if attr in validatable and (val <= 0 or val == None):
@@ -216,17 +220,27 @@ class Generator(QRunnable):
         # Handle edge case for 2-sided configurations
         if self.numSides == 2:
             # For 2 sides, use direct clearance check instead of angular calculation
-            maxTactorRadius = self.magnetRingRadius - self.magnetRadius - 2  # 2mm tolerance
+            maxTactorRadius = (
+                self.magnetRingRadius - self.magnetRadius - 2
+            )  # 2mm tolerance
         else:
             maxTactorRadius = self.tactorRadius / (np.cos(np.pi / self.numSides))
         if maxTactorRadius + tolerance > self.magnetRingRadius - self.magnetRadius:
             min_ring_radius = maxTactorRadius + self.magnetRadius + tolerance
-            max_tactor = (self.magnetRingRadius - self.magnetRadius - tolerance) * np.cos(np.pi / self.numSides) if self.numSides > 2 else self.tactorRadius
-            suggestion = self.get_validation_suggestion('tactor_magnet_incompatible', {
-                'tactor': self.tactorRadius,
-                'min_ring': min_ring_radius,
-                'max_tactor': max_tactor
-            })
+            max_tactor = (
+                (self.magnetRingRadius - self.magnetRadius - tolerance)
+                * np.cos(np.pi / self.numSides)
+                if self.numSides > 2
+                else self.tactorRadius
+            )
+            suggestion = self.get_validation_suggestion(
+                "tactor_magnet_incompatible",
+                {
+                    "tactor": self.tactorRadius,
+                    "min_ring": min_ring_radius,
+                    "max_tactor": max_tactor,
+                },
+            )
             messages.append(f"{suggestion['message']} {suggestion['fix']}")
         if (
             self.concentricPolygonRadius
@@ -239,12 +253,17 @@ class Generator(QRunnable):
             2 * self.concentricPolygonRadius * np.tan(np.pi / self.numSides)
         )
         if self.slotWidth + 2 * tolerance > concentricPolygonEdge:
-            min_radius = (self.slotWidth + 2 * tolerance) / (2 * np.tan(np.pi / self.numSides))
-            suggestion = self.get_validation_suggestion('slot_too_wide', {
-                'slot': self.slotWidth,
-                'edge': concentricPolygonEdge,
-                'min_radius': min_radius
-            })
+            min_radius = (self.slotWidth + 2 * tolerance) / (
+                2 * np.tan(np.pi / self.numSides)
+            )
+            suggestion = self.get_validation_suggestion(
+                "slot_too_wide",
+                {
+                    "slot": self.slotWidth,
+                    "edge": concentricPolygonEdge,
+                    "min_radius": min_radius,
+                },
+            )
             messages.append(f"{suggestion['message']} {suggestion['fix']}")
 
         if (
@@ -315,24 +334,26 @@ class Generator(QRunnable):
     def get_validation_suggestion(self, error_type, current_values):
         """Generate specific suggestions for validation errors"""
         suggestions = {
-            'tactor_magnet_incompatible': {
-                'message': f"Tactor radius ({current_values['tactor']:.1f}mm) requires minimum clearance from magnets.",
-                'fix': f"Try: Increase Magnet Ring Radius to >{current_values['min_ring']:.0f}mm OR Decrease Tactor Radius to <{current_values['max_tactor']:.1f}mm"
+            "tactor_magnet_incompatible": {
+                "message": f"Tactor radius ({current_values['tactor']:.1f}mm) requires minimum clearance from magnets.",
+                "fix": f"Try: Increase Magnet Ring Radius to >{current_values['min_ring']:.0f}mm OR Decrease Tactor Radius to <{current_values['max_tactor']:.1f}mm",
             },
-            'slot_too_wide': {
-                'message': f"Slot width ({current_values['slot']:.1f}mm) exceeds polygon edge length ({current_values['edge']:.1f}mm).",
-                'fix': f"Try: Reduce Slot Width to <{current_values['edge']-2:.0f}mm OR Increase Concentric Polygon Radius to >{current_values['min_radius']:.0f}mm"
+            "slot_too_wide": {
+                "message": f"Slot width ({current_values['slot']:.1f}mm) exceeds polygon edge length ({current_values['edge']:.1f}mm).",
+                "fix": f"Try: Reduce Slot Width to <{current_values['edge']-2:.0f}mm OR Increase Concentric Polygon Radius to >{current_values['min_radius']:.0f}mm",
             },
-            'polygon_too_small': {
-                'message': f"Concentric polygon too small for magnet configuration.",
-                'fix': f"Try: Increase Concentric Polygon Radius to >{current_values['min_radius']:.0f}mm"
+            "polygon_too_small": {
+                "message": f"Concentric polygon too small for magnet configuration.",
+                "fix": f"Try: Increase Concentric Polygon Radius to >{current_values['min_radius']:.0f}mm",
             },
-            'mount_radius_large': {
-                'message': f"Mount radius ({current_values['mount']:.1f}mm) interferes with magnets.",
-                'fix': f"Try: Reduce Mount Radius to <{current_values['max_mount']:.0f}mm"
-            }
+            "mount_radius_large": {
+                "message": f"Mount radius ({current_values['mount']:.1f}mm) interferes with magnets.",
+                "fix": f"Try: Reduce Mount Radius to <{current_values['max_mount']:.0f}mm",
+            },
         }
-        return suggestions.get(error_type, {'message': 'Configuration error', 'fix': 'Check parameters'})
+        return suggestions.get(
+            error_type, {"message": "Configuration error", "fix": "Check parameters"}
+        )
 
     def booleanOp(self, obj1, obj2, opType):
         if not obj1.is_manifold and not obj2.is_manifold:
@@ -419,7 +440,7 @@ class Generator(QRunnable):
         elif val_str.endswith(".") and len(val_str) > 1:
             # Ends with decimal point like "1." - this is valid, let float() handle it
             pass
-        elif val_str.count('.') > 1:
+        elif val_str.count(".") > 1:
             # Multiple decimal points - invalid
             return None
 
@@ -447,7 +468,7 @@ class Generator(QRunnable):
             return None
 
         # For integer fields, don't allow decimal points at all
-        if '.' in val_str:
+        if "." in val_str:
             return None
 
         try:
@@ -474,12 +495,12 @@ class Generator(QRunnable):
         lines = []
         # polygon side
         polygonSideHalf = self.concentricPolygonRadius * np.tan(theta / 2)
-        #lines.append(
+        # lines.append(
         #    (
         #        [polygonSideHalf, self.concentricPolygonRadius],
         #        [-1 * polygonSideHalf, self.concentricPolygonRadius],
         #    )
-        #)
+        # )
 
         # magnet clip holes
         resolution = 30
@@ -616,6 +637,7 @@ class Generator(QRunnable):
 
     def generateTyvekTile(self):
         doc = ezdxf.new(dxfversion="AC1015")
+        doc.units = ezdxf.units.MM
         msp = doc.modelspace()
         pvVerts, pvLines = self.genCenter(msp)
         lines = np.array(self.genTyvekTileFlap()).reshape(-1, 2).T
@@ -639,6 +661,15 @@ class Generator(QRunnable):
             for k in range(0, new_len, 2):
                 msp.add_line(new_verts[k].tolist()[0], new_verts[k + 1].tolist()[0])
         doc.saveas(f"{self.userDir}/tyvekTile.dxf")
+
+        backend = svg.SVGBackend()
+        Frontend(RenderContext(doc), backend).draw_layout(msp)
+        page = layout.Page(0, 0, layout.Units.mm, margins=layout.Margins.all(0))
+        svg_str = backend.get_string(
+            page, settings=layout.Settings(scale=1, fit_page=False)
+        )
+        with open(f"{self.userDir}/tvekTile.svg", "wt") as fp:
+            fp.write(svg_str)
 
         mesh = pv.PolyData()
         mesh.points = pvVerts
@@ -669,10 +700,19 @@ class Generator(QRunnable):
 
     def generateFoam(self):
         doc = ezdxf.new(dxfversion="AC1015")
+        doc.units = ezdxf.units.MM
         msp = doc.modelspace()
         pvVerts, pvLines = self.genCenter(msp)
         pvVerts, pvLines = self.genOuterPolygon(msp, pvVerts, pvLines)
         doc.saveas(f"{self.userDir}/foamPiece.dxf")
+        backend = svg.SVGBackend()
+        Frontend(RenderContext(doc), backend).draw_layout(msp)
+        page = layout.Page(0, 0, layout.Units.mm, margins=layout.Margins.all(0))
+        svg_str = backend.get_string(
+            page, settings=layout.Settings(scale=1, fit_page=False)
+        )
+        with open(f"{self.userDir}/foamPiece.svg", "wt") as fp:
+            fp.write(svg_str)
 
         mesh = pv.PolyData()
         mesh.points = pvVerts
@@ -853,11 +893,20 @@ class Generator(QRunnable):
 
     def generateMagnetRing(self):
         doc = ezdxf.new(dxfversion="AC1015")
+        doc.units = ezdxf.units.MM
         msp = doc.modelspace()
         pvVerts, pvLines = self.genCenter(msp)
         pvVerts, pvLines = self.genOuterPolygon(msp, pvVerts, pvLines)
         pvVerts, pvLines = self.genMagnetHoles(msp, pvVerts, pvLines)
         doc.saveas(f"{self.userDir}/magnetRing.dxf")
+        backend = svg.SVGBackend()
+        Frontend(RenderContext(doc), backend).draw_layout(msp)
+        page = layout.Page(0, 0, layout.Units.mm, margins=layout.Margins.all(0))
+        svg_str = backend.get_string(
+            page, settings=layout.Settings(scale=1, fit_page=False)
+        )
+        with open(f"{self.userDir}/magnetRing.svg", "wt") as fp:
+            fp.write(svg_str)
 
         mesh = pv.PolyData()
         mesh.points = pvVerts
@@ -920,9 +969,13 @@ class Generator(QRunnable):
         mesh = pv.PolyData(totalVerts, totalFaces)
         return mesh
 
-    def check_geometry_overlap(self, origin1, radius1, origin2, radius2, min_distance=2):
+    def check_geometry_overlap(
+        self, origin1, radius1, origin2, radius2, min_distance=2
+    ):
         """Check if two circular geometries will overlap"""
-        distance = np.sqrt((origin1[0] - origin2[0])**2 + (origin1[1] - origin2[1])**2)
+        distance = np.sqrt(
+            (origin1[0] - origin2[0]) ** 2 + (origin1[1] - origin2[1]) ** 2
+        )
         required_distance = radius1 + radius2 + min_distance
         return distance < required_distance
 
@@ -939,14 +992,19 @@ class Generator(QRunnable):
             magnet_origin = (
                 self.magnetRingRadius * np.cos(theta),
                 self.magnetRingRadius * np.sin(theta),
-                0
+                0,
             )
             if self.check_geometry_overlap(
-                tactor_origin[:2], self.tactorRadius,
-                magnet_origin[:2], self.magnetRadius, min_distance=2
+                tactor_origin[:2],
+                self.tactorRadius,
+                magnet_origin[:2],
+                self.magnetRadius,
+                min_distance=2,
             ):
-                raise ValueError(f"Geometry overlap detected: Magnet {i} conflicts with tactor cavity. "
-                               f"Increase Magnet Ring Radius or decrease Tactor Radius.")
+                raise ValueError(
+                    f"Geometry overlap detected: Magnet {i} conflicts with tactor cavity. "
+                    f"Increase Magnet Ring Radius or decrease Tactor Radius."
+                )
 
         # Continue with existing code...
         prism = self.polygonalPrismSlanted(
@@ -1738,7 +1796,9 @@ class Generator(QRunnable):
                 )
             )
             magnetHolder = self.polygonalPrism(
-                radius=self.magnetRadius + self.magnetClipRingThickness + 0.25,  # Added 0.25mm tolerance
+                radius=self.magnetRadius
+                + self.magnetClipRingThickness
+                + 0.25,  # Added 0.25mm tolerance
                 res=20,
                 height=self.magnetThickness,
                 origin=magnetOrigin,
@@ -1756,7 +1816,7 @@ class Generator(QRunnable):
                 )
             )
             magnet = self.polygonalPrism(
-                radius=self.magnetRadius,  #removed the extra 0.5mm tolerance
+                radius=self.magnetRadius,  # removed the extra 0.5mm tolerance
                 res=20,
                 height=self.magnetThickness,
                 origin=magnetOrigin,
@@ -1778,7 +1838,10 @@ class Generator(QRunnable):
                     + self.magnetRadius
                     + self.magnetClipRingThickness
                     + self.slotHeight / 2
-                    + i * (self.slotHeight + 2 * self.slotSpacing),  # Vertical offset using configurable spacing
+                    + i
+                    * (
+                        self.slotHeight + 2 * self.slotSpacing
+                    ),  # Vertical offset using configurable spacing
                     origin[2],
                 )
             )

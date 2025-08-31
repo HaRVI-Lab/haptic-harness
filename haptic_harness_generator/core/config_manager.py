@@ -1,6 +1,7 @@
 """
 Configuration management module - handles all presets, validation rules, and parameter definitions
 """
+
 import json
 import os
 from typing import Dict, List, Tuple, Optional
@@ -8,9 +9,11 @@ from dataclasses import dataclass
 import numpy as np
 from datetime import datetime
 
+
 @dataclass
 class ParameterDefinition:
     """Definition for a single parameter"""
+
     name: str
     display_name: str
     ui_number: int
@@ -22,9 +25,10 @@ class ParameterDefinition:
     category: str
     validation_dependencies: List[str] = None
 
+
 class ConfigurationManager:
     """Central configuration management"""
-    
+
     # PARAMETER DEFINITIONS - Single source of truth
     PARAMETERS = {
         "concentricPolygonRadius": ParameterDefinition(
@@ -37,7 +41,7 @@ class ConfigurationManager:
             default_value=30,
             tooltip="Outer radius of the polygon tile. Determines overall size.",
             category="Tile Parameters",
-            validation_dependencies=["tactorRadius", "magnetRingRadius", "slotWidth"]
+            validation_dependencies=["tactorRadius", "magnetRingRadius", "slotWidth"],
         ),
         "tactorRadius": ParameterDefinition(
             name="tactorRadius",
@@ -49,7 +53,7 @@ class ConfigurationManager:
             default_value=10,
             tooltip="Radius of the tactor cavity. Must be smaller than (magnetRingRadius - magnetRadius - 2mm)",
             category="Tile Parameters",
-            validation_dependencies=["magnetRingRadius", "magnetRadius"]
+            validation_dependencies=["magnetRingRadius", "magnetRadius"],
         ),
         "magnetRingRadius": ParameterDefinition(
             name="magnetRingRadius",
@@ -61,7 +65,11 @@ class ConfigurationManager:
             default_value=20,
             tooltip="Distance from center to magnet positions",
             category="Tile Parameters",
-            validation_dependencies=["tactorRadius", "magnetRadius", "concentricPolygonRadius"]
+            validation_dependencies=[
+                "tactorRadius",
+                "magnetRadius",
+                "concentricPolygonRadius",
+            ],
         ),
         "numSides": ParameterDefinition(
             name="numSides",
@@ -73,7 +81,7 @@ class ConfigurationManager:
             default_value=6,
             tooltip="Polygon sides (3-8). 4 or 6 recommended for wrist mounting.",
             category="Tile Parameters",
-            validation_dependencies=["concentricPolygonRadius", "slotWidth"]
+            validation_dependencies=["concentricPolygonRadius", "slotWidth"],
         ),
         "foamThickness": ParameterDefinition(
             name="foamThickness",
@@ -85,7 +93,7 @@ class ConfigurationManager:
             default_value=1,
             tooltip="Thickness of foam layer between tactor and skin",
             category="Tile Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "distanceBetweenMagnetClipAndPolygonEdge": ParameterDefinition(
             name="distanceBetweenMagnetClipAndPolygonEdge",
@@ -97,7 +105,7 @@ class ConfigurationManager:
             default_value=3,
             tooltip="Distance from magnet clip to polygon edge",
             category="Tile Parameters",
-            validation_dependencies=["concentricPolygonRadius", "magnetRadius"]
+            validation_dependencies=["concentricPolygonRadius", "magnetRadius"],
         ),
         "numMagnetsInRing": ParameterDefinition(
             name="numMagnetsInRing",
@@ -109,7 +117,7 @@ class ConfigurationManager:
             default_value=6,
             tooltip="Number of magnets arranged in a ring",
             category="Tile Parameters",
-            validation_dependencies=["magnetRingRadius", "magnetRadius"]
+            validation_dependencies=["magnetRingRadius", "magnetRadius"],
         ),
         "magnetRadius": ParameterDefinition(
             name="magnetRadius",
@@ -121,7 +129,7 @@ class ConfigurationManager:
             default_value=5,
             tooltip="Radius of individual magnets",
             category="Magnet Parameters",
-            validation_dependencies=["magnetRingRadius", "tactorRadius"]
+            validation_dependencies=["magnetRingRadius", "tactorRadius"],
         ),
         "magnetThickness": ParameterDefinition(
             name="magnetThickness",
@@ -133,7 +141,7 @@ class ConfigurationManager:
             default_value=1,
             tooltip="Thickness of individual magnets",
             category="Magnet Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "slotWidth": ParameterDefinition(
             name="slotWidth",
@@ -145,7 +153,11 @@ class ConfigurationManager:
             default_value=30,
             tooltip="Width of the slot in the clip",
             category="Clip Parameters",
-            validation_dependencies=["concentricPolygonRadius", "numSides", "slotBorderRadius"]
+            validation_dependencies=[
+                "concentricPolygonRadius",
+                "numSides",
+                "slotBorderRadius",
+            ],
         ),
         "slotHeight": ParameterDefinition(
             name="slotHeight",
@@ -157,7 +169,7 @@ class ConfigurationManager:
             default_value=1.5,
             tooltip="Height of the slot in the clip",
             category="Clip Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "slotBorderRadius": ParameterDefinition(
             name="slotBorderRadius",
@@ -169,7 +181,7 @@ class ConfigurationManager:
             default_value=10,
             tooltip="Radius of the slot border for rounded corners",
             category="Clip Parameters",
-            validation_dependencies=["slotWidth", "concentricPolygonRadius"]
+            validation_dependencies=["slotWidth", "concentricPolygonRadius"],
         ),
         "magnetClipThickness": ParameterDefinition(
             name="magnetClipThickness",
@@ -181,7 +193,7 @@ class ConfigurationManager:
             default_value=1.5,
             tooltip="Thickness of the magnet clip walls",
             category="Clip Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "magnetClipRingThickness": ParameterDefinition(
             name="magnetClipRingThickness",
@@ -193,7 +205,7 @@ class ConfigurationManager:
             default_value=1.5,
             tooltip="Thickness of the magnet clip ring",
             category="Clip Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "distanceBetweenMagnetsInClip": ParameterDefinition(
             name="distanceBetweenMagnetsInClip",
@@ -205,7 +217,7 @@ class ConfigurationManager:
             default_value=15,
             tooltip="Distance between magnets in the clip",
             category="Clip Parameters",
-            validation_dependencies=["magnetRadius"]
+            validation_dependencies=["magnetRadius"],
         ),
         "distanceBetweenMagnetClipAndSlot": ParameterDefinition(
             name="distanceBetweenMagnetClipAndSlot",
@@ -217,7 +229,7 @@ class ConfigurationManager:
             default_value=3,
             tooltip="Distance between magnet clip and slot",
             category="Clip Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "mountRadius": ParameterDefinition(
             name="mountRadius",
@@ -229,7 +241,7 @@ class ConfigurationManager:
             default_value=13,
             tooltip="Radius of the mount component",
             category="Mount Parameters",
-            validation_dependencies=["magnetRingRadius", "magnetRadius"]
+            validation_dependencies=["magnetRingRadius", "magnetRadius"],
         ),
         "mountHeight": ParameterDefinition(
             name="mountHeight",
@@ -241,7 +253,7 @@ class ConfigurationManager:
             default_value=10,
             tooltip="Height of the mount component",
             category="Mount Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "mountShellThickness": ParameterDefinition(
             name="mountShellThickness",
@@ -253,7 +265,7 @@ class ConfigurationManager:
             default_value=2,
             tooltip="Thickness of the mount shell walls",
             category="Mount Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "mountBottomAngleOpening": ParameterDefinition(
             name="mountBottomAngleOpening",
@@ -265,7 +277,7 @@ class ConfigurationManager:
             default_value=60,
             tooltip="Bottom angle opening of the mount in degrees",
             category="Mount Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "mountTopAngleOpening": ParameterDefinition(
             name="mountTopAngleOpening",
@@ -277,7 +289,7 @@ class ConfigurationManager:
             default_value=45,
             tooltip="Top angle opening of the mount in degrees",
             category="Mount Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "brim": ParameterDefinition(
             name="brim",
@@ -289,7 +301,7 @@ class ConfigurationManager:
             default_value=3,
             tooltip="Brim size for 3D printing support",
             category="Mount Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "strapWidth": ParameterDefinition(
             name="strapWidth",
@@ -301,7 +313,7 @@ class ConfigurationManager:
             default_value=10,
             tooltip="Width of the strap",
             category="Strap Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "strapThickness": ParameterDefinition(
             name="strapThickness",
@@ -313,7 +325,7 @@ class ConfigurationManager:
             default_value=1,
             tooltip="Thickness of the strap",
             category="Strap Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "strapClipThickness": ParameterDefinition(
             name="strapClipThickness",
@@ -325,7 +337,7 @@ class ConfigurationManager:
             default_value=1,
             tooltip="Thickness of the strap clip",
             category="Strap Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "strapClipRadius": ParameterDefinition(
             name="strapClipRadius",
@@ -337,7 +349,7 @@ class ConfigurationManager:
             default_value=1,
             tooltip="Radius of the strap clip",
             category="Strap Parameters",
-            validation_dependencies=["strapClipRim"]
+            validation_dependencies=["strapClipRim"],
         ),
         "distanceBetweenStrapsInClip": ParameterDefinition(
             name="distanceBetweenStrapsInClip",
@@ -349,7 +361,7 @@ class ConfigurationManager:
             default_value=2,
             tooltip="Distance between straps in the clip",
             category="Strap Parameters",
-            validation_dependencies=[]
+            validation_dependencies=[],
         ),
         "strapClipRim": ParameterDefinition(
             name="strapClipRim",
@@ -361,7 +373,7 @@ class ConfigurationManager:
             default_value=2,
             tooltip="Rim size of the strap clip",
             category="Strap Parameters",
-            validation_dependencies=["strapClipRadius"]
+            validation_dependencies=["strapClipRadius"],
         ),
         "slotSpacing": ParameterDefinition(
             name="slotSpacing",
@@ -373,7 +385,7 @@ class ConfigurationManager:
             default_value=2,
             tooltip="Vertical spacing between the two slots in the magnet clip",
             category="Clip Parameters",
-            validation_dependencies=["slotHeight"]
+            validation_dependencies=["slotHeight"],
         ),
     }
 
@@ -408,7 +420,7 @@ class ConfigurationManager:
             "strapClipRadius": 1,
             "distanceBetweenStrapsInClip": 2,
             "strapClipRim": 2,
-            "slotSpacing": 2
+            "slotSpacing": 2,
         },
         "Compact 4-sided": {
             "concentricPolygonRadius": 28,
@@ -439,7 +451,7 @@ class ConfigurationManager:
             "strapClipRadius": 1,
             "distanceBetweenStrapsInClip": 2,
             "strapClipRim": 2,
-            "slotSpacing": 2
+            "slotSpacing": 2,
         },
         "Standard 6-sided": {
             # Use exact values from working configuration
@@ -471,8 +483,8 @@ class ConfigurationManager:
             "strapClipRadius": 1,
             "distanceBetweenStrapsInClip": 2,
             "strapClipRim": 2,
-            "slotSpacing": 2
-        }
+            "slotSpacing": 2,
+        },
     }
 
     @classmethod
@@ -521,24 +533,31 @@ class ConfigurationManager:
         tolerance = 1.0
 
         # Extract values with defaults
-        numSides = config.get('numSides', 6)
-        concentricPolygonRadius = config.get('concentricPolygonRadius', 30)
-        slotWidth = config.get('slotWidth', 26)
-        slotBorderRadius = config.get('slotBorderRadius', 10)
-        tactorRadius = config.get('tactorRadius', 10)
-        magnetRadius = config.get('magnetRadius', 5)
-        magnetRingRadius = config.get('magnetRingRadius', 20)
-        distanceBetweenMagnetsInClip = config.get('distanceBetweenMagnetsInClip', 15)
-        distanceBetweenMagnetClipAndPolygonEdge = config.get('distanceBetweenMagnetClipAndPolygonEdge', 3)
-        distanceBetweenMagnetClipAndSlot = config.get('distanceBetweenMagnetClipAndSlot', 3)
-        slotHeight = config.get('slotHeight', 1.5)
-        magnetClipRingThickness = config.get('magnetClipRingThickness', 1.5)
+        numSides = config.get("numSides", 6)
+        concentricPolygonRadius = config.get("concentricPolygonRadius", 30)
+        slotWidth = config.get("slotWidth", 26)
+        slotBorderRadius = config.get("slotBorderRadius", 10)
+        tactorRadius = config.get("tactorRadius", 10)
+        magnetRadius = config.get("magnetRadius", 5)
+        magnetRingRadius = config.get("magnetRingRadius", 20)
+        distanceBetweenMagnetsInClip = config.get("distanceBetweenMagnetsInClip", 15)
+        distanceBetweenMagnetClipAndPolygonEdge = config.get(
+            "distanceBetweenMagnetClipAndPolygonEdge", 3
+        )
+        distanceBetweenMagnetClipAndSlot = config.get(
+            "distanceBetweenMagnetClipAndSlot", 3
+        )
+        slotHeight = config.get("slotHeight", 1.5)
+        magnetClipRingThickness = config.get("magnetClipRingThickness", 1.5)
+        numMagnetsInRing = config.get("numMagnetsInRing", 6)
 
         # Critical validation 1: Polygon edge vs slot width
         polygon_edge = 2 * concentricPolygonRadius * np.tan(np.pi / numSides)
         if slotWidth + 2 * tolerance > polygon_edge:
             safe_slot_width = polygon_edge - 2 * tolerance
-            safe_polygon_radius = (slotWidth + 2 * tolerance) / (2 * np.tan(np.pi / numSides))
+            safe_polygon_radius = (slotWidth + 2 * tolerance) / (
+                2 * np.tan(np.pi / numSides)
+            )
             errors.append(
                 f"Slot too wide for polygon:\n"
                 f"  Current: {cls.get_parameter_display('slotWidth')} = {slotWidth:.1f}mm\n"
@@ -547,14 +566,17 @@ class ConfigurationManager:
                 f"    • Reduce {cls.get_parameter_display('slotWidth')} to < {safe_slot_width:.0f}mm\n"
                 f"    • Increase {cls.get_parameter_display('concentricPolygonRadius')} to > {safe_polygon_radius:.0f}mm"
             )
-            params.extend(['slotWidth', 'concentricPolygonRadius', 'numSides'])
+            params.extend(["slotWidth", "concentricPolygonRadius", "numSides"])
 
         # Critical validation 2: Flap intersection check
         if polygon_edge > 0:
             x = (polygon_edge - slotWidth) / 2
-            y = (distanceBetweenMagnetClipAndPolygonEdge +
-                 2 * (magnetRadius + magnetClipRingThickness) +
-                 distanceBetweenMagnetClipAndSlot + slotHeight / 2)
+            y = (
+                distanceBetweenMagnetClipAndPolygonEdge
+                + 2 * (magnetRadius + magnetClipRingThickness)
+                + distanceBetweenMagnetClipAndSlot
+                + slotHeight / 2
+            )
 
             if x > 0 and y > 0:
                 beta = np.arctan(x / y)
@@ -572,12 +594,18 @@ class ConfigurationManager:
                         f"    • Reduce {cls.get_parameter_display('slotBorderRadius')} (current: {slotBorderRadius}mm)\n"
                         f"    • Increase {cls.get_parameter_display('concentricPolygonRadius')} (current: {concentricPolygonRadius}mm)"
                     )
-                    params.extend(['slotWidth', 'slotBorderRadius', 'concentricPolygonRadius'])
+                    params.extend(
+                        ["slotWidth", "slotBorderRadius", "concentricPolygonRadius"]
+                    )
 
         # Critical validation 3: Tactor vs magnet clearance
-        max_tactor_reach = tactorRadius if numSides == 2 else tactorRadius / np.cos(np.pi / numSides)
+        max_tactor_reach = (
+            tactorRadius if numSides == 2 else tactorRadius / np.cos(np.pi / numSides)
+        )
         if max_tactor_reach + tolerance > magnetRingRadius - magnetRadius:
-            safe_tactor = (magnetRingRadius - magnetRadius - tolerance) * np.cos(np.pi / numSides)
+            safe_tactor = (magnetRingRadius - magnetRadius - tolerance) * np.cos(
+                np.pi / numSides
+            )
             safe_ring = max_tactor_reach + magnetRadius + tolerance
             errors.append(
                 f"Tactor-magnet interference:\n"
@@ -585,7 +613,27 @@ class ConfigurationManager:
                 f"    • Reduce {cls.get_parameter_display('tactorRadius')} to < {safe_tactor:.1f}mm\n"
                 f"    • Increase {cls.get_parameter_display('magnetRingRadius')} to > {safe_ring:.0f}mm"
             )
-            params.extend(['tactorRadius', 'magnetRingRadius', 'magnetRadius'])
+            params.extend(["tactorRadius", "magnetRingRadius", "magnetRadius"])
+
+        # Critical validation 4: Magnets don't overlap
+        halfAngleBetweenMagnets = np.pi / numMagnetsInRing
+        halfDistBetweenMagnets = magnetRingRadius * np.sin(halfAngleBetweenMagnets)
+        if magnetRadius > halfDistBetweenMagnets - tolerance:
+            safe_mag_radius = halfDistBetweenMagnets - tolerance
+            safe_ring_radius = (magnetRadius + tolerance) / np.sin(
+                halfAngleBetweenMagnets
+            )
+            safe_num_magnets = np.pi / np.arcsin(
+                (magnetRadius + tolerance) / magnetRingRadius
+            )
+            errors.append(
+                f"Magnet ring interference:\n"
+                f"  Options:\n"
+                f"    • Reduce {cls.get_parameter_display('numMagnetsInRing')} to < {safe_num_magnets:.0f}\n"
+                f"    • Reduce {cls.get_parameter_display('magnetRadius')} to < {safe_mag_radius:.1f}mm\n"
+                f"    • Increase {cls.get_parameter_display('magnetRingRadius')} to > {safe_ring_radius:.1f}mm"
+            )
+            params.extend(["magnetRingRadius", "magnetRadius", "numMagnetsInRing"])
 
         return errors, params
 
@@ -597,11 +645,11 @@ class ConfigurationManager:
             "parameters": config,
             "metadata": {
                 "created": str(datetime.now()),
-                "validated": cls.validate_config(config)[0]
-            }
+                "validated": cls.validate_config(config)[0],
+            },
         }
         try:
-            with open(filepath, 'w') as f:
+            with open(filepath, "w") as f:
                 json.dump(export_data, f, indent=4)
             return True
         except Exception as e:
@@ -651,17 +699,17 @@ class ConfigurationManager:
                 "validated": cls.validate_config(config)[0],
                 "auto_saved": True,
                 "generation_timestamp": timestamp,
-                "purpose": "Auto-saved configuration for generation run"
-            }
+                "purpose": "Auto-saved configuration for generation run",
+            },
         }
 
         try:
             # Save timestamped version to _autosave subdirectory
-            with open(timestamped_filepath, 'w') as f:
+            with open(timestamped_filepath, "w") as f:
                 json.dump(export_data, f, indent=4)
 
             # Save as latest config.json in main directory
-            with open(latest_filepath, 'w') as f:
+            with open(latest_filepath, "w") as f:
                 json.dump(export_data, f, indent=4)
 
             print(f"Configuration auto-saved to: {timestamped_filepath}")
@@ -675,7 +723,7 @@ class ConfigurationManager:
     def import_config(cls, filepath: str) -> Optional[Dict]:
         """Import and validate configuration"""
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath, "r") as f:
                 data = json.load(f)
 
             # Handle different versions

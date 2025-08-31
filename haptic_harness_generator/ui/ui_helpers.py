@@ -1,10 +1,15 @@
 """
 UI helper functions and components
 """
+
 from PyQt5 import QtWidgets, QtCore, QtGui
 from typing import Dict, List, Optional
 import json
-from haptic_harness_generator.core.precision_handler import PrecisionHandler, format_display
+from haptic_harness_generator.core.precision_handler import (
+    PrecisionHandler,
+    format_display,
+)
+
 
 class ParameterWidget(QtWidgets.QWidget):
     """Custom widget for parameter input with validation"""
@@ -16,7 +21,7 @@ class ParameterWidget(QtWidgets.QWidget):
         self.param_def = param_def
         self._updating_programmatically = False
         self.setup_ui()
-    
+
     def setup_ui(self):
         # Use QGridLayout for perfect alignment
         grid = QtWidgets.QGridLayout()
@@ -31,12 +36,17 @@ class ParameterWidget(QtWidgets.QWidget):
         # Label with tooltip and word wrapping
         from haptic_harness_generator.core.config_manager import ConfigurationManager
 
-        label = QtWidgets.QLabel(ConfigurationManager.get_parameter_display(self.param_def.name))
-        label.setToolTip(f"{self.param_def.name}: {self.param_def.tooltip}")  # Enhanced tooltip
+        label = QtWidgets.QLabel(
+            ConfigurationManager.get_parameter_display(self.param_def.name)
+        )
+        label.setToolTip(
+            f"{self.param_def.name}: {self.param_def.tooltip}"
+        )  # Enhanced tooltip
         label.setMinimumWidth(label_width)
         label.setMaximumWidth(label_width)
         label.setWordWrap(True)  # Enable word wrapping
-        label.setStyleSheet("""
+        label.setStyleSheet(
+            """
             QLabel {
                 color: #cccccc;
                 padding: 5px;
@@ -47,7 +57,8 @@ class ParameterWidget(QtWidgets.QWidget):
                 background-color: #3a3a3a;
                 color: #ffffff;
             }
-        """)
+        """
+        )
 
         # Input field
         self.input = QtWidgets.QLineEdit()
@@ -61,14 +72,11 @@ class ParameterWidget(QtWidgets.QWidget):
         # Validator
         if self.param_def.unit and self.param_def.unit != "":
             validator = QtGui.QDoubleValidator(
-                self.param_def.min_value,
-                self.param_def.max_value,
-                2
+                self.param_def.min_value, self.param_def.max_value, 2
             )
         else:
             validator = QtGui.QIntValidator(
-                int(self.param_def.min_value),
-                int(self.param_def.max_value)
+                int(self.param_def.min_value), int(self.param_def.max_value)
             )
         self.input.setValidator(validator)
 
@@ -88,7 +96,8 @@ class ParameterWidget(QtWidgets.QWidget):
         # Enhanced range label with improved styling
         range_text = f"{self.param_def.min_value:.0f}-{self.param_def.max_value:.0f}"
         range_label = QtWidgets.QLabel(range_text)
-        range_label.setStyleSheet("""
+        range_label.setStyleSheet(
+            """
             QLabel {
                 color: #888888;
                 font-size: 12px;
@@ -101,7 +110,8 @@ class ParameterWidget(QtWidgets.QWidget):
                 border-color: #4a4a5a;
                 background-color: #3a3a4a;
             }
-        """)
+        """
+        )
         range_label.setToolTip(f"Ideal range: {range_text} {unit_text}")
         range_label.setMinimumWidth(range_width)
         range_label.setMaximumWidth(range_width)
@@ -181,7 +191,7 @@ class ParameterWidget(QtWidgets.QWidget):
         elif text.endswith(".") and len(text) > 1:
             # Ends with decimal point like "1." - valid for float conversion
             return text
-        elif text.count('.') > 1:
+        elif text.count(".") > 1:
             # Multiple decimal points - invalid
             return None
         else:
@@ -223,7 +233,7 @@ class ParameterWidget(QtWidgets.QWidget):
                 return False
 
         # Check for multiple decimal points
-        if text.count('.') > 1:
+        if text.count(".") > 1:
             return False
 
         # Try to parse as float
@@ -239,8 +249,10 @@ class ParameterWidget(QtWidgets.QWidget):
 
     def _show_input_error(self):
         """Show error styling for invalid input"""
-        self.input.setStyleSheet("QLineEdit { border: 2px solid red; background-color: #ffe6e6; }")
-    
+        self.input.setStyleSheet(
+            "QLineEdit { border: 2px solid red; background-color: #ffe6e6; }"
+        )
+
     def set_value(self, value):
         """Set parameter value programmatically without triggering change signal"""
         self._updating_programmatically = True
@@ -248,24 +260,27 @@ class ParameterWidget(QtWidgets.QWidget):
         rounded_value = PrecisionHandler.round_value(value)
         self.input.setText(f"{rounded_value:.2f}")
         self._updating_programmatically = False
-    
+
     def get_value(self):
         """Get parameter value"""
         return self.input.text()
-    
+
     def set_error(self, has_error):
         """Highlight field if it has an error with enhanced visual states"""
         if has_error:
-            self.input.setStyleSheet("""
+            self.input.setStyleSheet(
+                """
                 QLineEdit {
                     border: 2px solid #ff4444;
                     background-color: #552222;
                     color: #ffaaaa;
                 }
-            """)
+            """
+            )
         else:
             # Normal state with hover effects
-            self.input.setStyleSheet("""
+            self.input.setStyleSheet(
+                """
                 QLineEdit {
                     border: 1px solid #3a3a4a;
                     background-color: #2a2a2a;
@@ -281,7 +296,9 @@ class ParameterWidget(QtWidgets.QWidget):
                     border-color: #5a5a6a;
                     background-color: #3a3a3a;
                 }
-            """)
+            """
+            )
+
 
 class ValidationDisplay(QtWidgets.QWidget):
     """Smart validation display that hides when valid"""
@@ -312,7 +329,8 @@ class ValidationDisplay(QtWidgets.QWidget):
         self.details_browser = QtWidgets.QTextBrowser()
         self.details_browser.setReadOnly(True)
         self.details_browser.setMaximumHeight(400)  # Increased from 250px
-        self.details_browser.setStyleSheet("""
+        self.details_browser.setStyleSheet(
+            """
             QTextBrowser {
                 background-color: #2a2a2a;
                 border: 1px solid #3a3a4a;
@@ -320,7 +338,8 @@ class ValidationDisplay(QtWidgets.QWidget):
                 padding: 10px;
                 font-family: 'Consolas', 'Monaco', monospace;
             }
-        """)
+        """
+        )
 
         details_layout.addWidget(self.toggle_btn)
         details_layout.addWidget(self.details_browser)
@@ -335,8 +354,10 @@ class ValidationDisplay(QtWidgets.QWidget):
         """Toggle the details section visibility"""
         self.details_expanded = not self.details_expanded
         self.details_browser.setVisible(self.details_expanded)
-        self.toggle_btn.setText("▼ Show Details" if not self.details_expanded else "▲ Hide Details")
-    
+        self.toggle_btn.setText(
+            "▼ Show Details" if not self.details_expanded else "▲ Hide Details"
+        )
+
     def update_validation(self, result):
         """Update display with smart validation result"""
         if result.is_valid:
@@ -348,8 +369,11 @@ class ValidationDisplay(QtWidgets.QWidget):
         """Hide everything except success message"""
         self.details_widget.hide()
         self.setMaximumHeight(60)
-        self.status_label.setText("✅ Configuration Valid - All parameters within acceptable ranges")
-        self.status_label.setStyleSheet("""
+        self.status_label.setText(
+            "✅ Configuration Valid - All parameters within acceptable ranges"
+        )
+        self.status_label.setStyleSheet(
+            """
             QLabel {
                 color: #44ff44;
                 font-weight: bold;
@@ -358,7 +382,8 @@ class ValidationDisplay(QtWidgets.QWidget):
                 border: 1px solid #44ff44;
                 border-radius: 5px;
             }
-        """)
+        """
+        )
 
     def set_invalid_state(self, result):
         """Show detailed error information"""
@@ -367,8 +392,11 @@ class ValidationDisplay(QtWidgets.QWidget):
 
         # Update status with descriptive message
         error_count = len(result.errors)
-        self.status_label.setText(f"Validation Status: {error_count} parameters need adjustment")
-        self.status_label.setStyleSheet("""
+        self.status_label.setText(
+            f"Validation Status: {error_count} parameters need adjustment"
+        )
+        self.status_label.setStyleSheet(
+            """
             QLabel {
                 color: #ff4444;
                 font-weight: bold;
@@ -377,7 +405,8 @@ class ValidationDisplay(QtWidgets.QWidget):
                 border: 1px solid #ff4444;
                 border-radius: 5px;
             }
-        """)
+        """
+        )
 
         # Format detailed content with highlighting
         content = self._format_validation_content(result)
@@ -396,27 +425,45 @@ class ValidationDisplay(QtWidgets.QWidget):
             html_content.append('<h3 style="color: #ff6666;">❌ Errors:</h3>')
             for error in result.errors:
                 # Highlight parameter references
-                formatted_error = error.replace('[', '<b style="color: #ffaa66;">[').replace(']', ']</b>')
-                html_content.append(f'<p style="color: #ffcccc; margin-left: 20px;">• {formatted_error}</p>')
+                # formatted_error = error.replace('[', '<b style="color: #ffaa66;">[').replace(']', ']</b>')
+                formatted_error = (
+                    error.replace("&", "&amp;")
+                    .replace("<", "&lt;")
+                    .replace(">", "&gt;")
+                    .replace("[", '<b style="color:#ffaa66;">[')
+                    .replace("]", "]</b>")
+                )
+                html_content.append(
+                    f'<p style="color: #ffcccc; margin-left: 20px;">• {formatted_error}</p>'
+                )
 
         if result.suggestions:
             html_content.append('<h3 style="color: #66ff66;">💡 Suggestions:</h3>')
             for suggestion in result.suggestions:
                 # Highlight actionable items and ensure precision formatting
-                formatted_suggestion = suggestion.replace('→', '<b style="color: #66ff66;">→</b>')
-                formatted_suggestion = formatted_suggestion.replace('Set ', '<b style="color: #aaffaa;">Set </b>')
-                html_content.append(f'<p style="color: #ccffcc; margin-left: 20px;">• {formatted_suggestion}</p>')
+                formatted_suggestion = suggestion.replace(
+                    "→", '<b style="color: #66ff66;">→</b>'
+                )
+                formatted_suggestion = formatted_suggestion.replace(
+                    "Set ", '<b style="color: #aaffaa;">Set </b>'
+                )
+                html_content.append(
+                    f'<p style="color: #ccffcc; margin-left: 20px;">• {formatted_suggestion}</p>'
+                )
 
         if result.warnings:
             html_content.append('<h3 style="color: #ffaa66;">⚠️ Warnings:</h3>')
             for warning in result.warnings:
-                html_content.append(f'<p style="color: #ffffcc; margin-left: 20px;">• {warning}</p>')
+                html_content.append(
+                    f'<p style="color: #ffffcc; margin-left: 20px;">• {warning}</p>'
+                )
 
-        return ''.join(html_content)
+        return "".join(html_content)
+
 
 class ScalingHelper:
     """Helper for DPI scaling"""
-    
+
     @staticmethod
     def get_scale_factor():
         """Get DPI scale factor"""
@@ -427,16 +474,17 @@ class ScalingHelper:
                 dpi = screen.logicalDotsPerInch()
                 return dpi / 96.0
         return 1.0
-    
+
     @staticmethod
     def scale_font(base_size):
         """Scale font size for DPI"""
         return int(base_size * ScalingHelper.get_scale_factor())
-    
+
     @staticmethod
     def scale_size(base_size):
         """Scale any size value for DPI"""
         return int(base_size * ScalingHelper.get_scale_factor())
+
 
 class PresetSelector(QtWidgets.QWidget):
     """Enhanced widget for selecting and managing presets with favorites"""
@@ -461,7 +509,8 @@ class PresetSelector(QtWidgets.QWidget):
         # Enhanced dropdown with styling
         self.combo = QtWidgets.QComboBox()
         self.combo.setMinimumWidth(200)
-        self.combo.setStyleSheet("""
+        self.combo.setStyleSheet(
+            """
             QComboBox {
                 background-color: #3a3a3a;
                 border: 1px solid #4a4a4a;
@@ -483,7 +532,8 @@ class PresetSelector(QtWidgets.QWidget):
                 border-right: 5px solid transparent;
                 border-top: 5px solid #cccccc;
             }
-        """)
+        """
+        )
 
         self.populate_combo()
         self.combo.currentTextChanged.connect(self.on_preset_changed)
@@ -514,14 +564,16 @@ class PresetSelector(QtWidgets.QWidget):
             if preset_name not in self.favorites:
                 self.combo.addItem(preset_name)
 
-
-
     def on_preset_changed(self, preset_name):
         """Handle preset selection change"""
         # Clean up preset name (remove favorite star and separators)
         clean_name = preset_name.replace("⭐ ", "").strip()
 
-        if clean_name not in ["-- Custom --", "--- Favorites ---", "--- All Presets ---"]:
+        if clean_name not in [
+            "-- Custom --",
+            "--- Favorites ---",
+            "--- All Presets ---",
+        ]:
             self.presetChanged.emit(clean_name)
 
     def set_custom(self):
@@ -539,50 +591,51 @@ class PresetSelector(QtWidgets.QWidget):
         self.favorites.discard(preset_name)
         self.populate_combo()
 
+
 class ConfigurationButtons(QtWidgets.QWidget):
     """Widget for configuration management buttons"""
-    
+
     exportRequested = QtCore.pyqtSignal()
     importRequested = QtCore.pyqtSignal()
     validateRequested = QtCore.pyqtSignal()
     generateRequested = QtCore.pyqtSignal()
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setup_ui()
-    
+
     def setup_ui(self):
         layout = QtWidgets.QVBoxLayout()
-        
+
         # Validation and generation buttons
         action_layout = QtWidgets.QHBoxLayout()
-        
+
         self.validate_btn = QtWidgets.QPushButton("Validate")
         self.validate_btn.clicked.connect(self.validateRequested.emit)
-        
+
         self.generate_btn = QtWidgets.QPushButton("Generate")
         self.generate_btn.clicked.connect(self.generateRequested.emit)
-        
+
         action_layout.addWidget(self.validate_btn)
         action_layout.addWidget(self.generate_btn)
-        
+
         # Export/Import buttons
         io_layout = QtWidgets.QHBoxLayout()
-        
+
         self.export_btn = QtWidgets.QPushButton("Export Config")
         self.export_btn.clicked.connect(self.exportRequested.emit)
-        
+
         self.import_btn = QtWidgets.QPushButton("Import Config")
         self.import_btn.clicked.connect(self.importRequested.emit)
-        
+
         io_layout.addWidget(self.export_btn)
         io_layout.addWidget(self.import_btn)
-        
+
         layout.addLayout(action_layout)
         layout.addLayout(io_layout)
-        
+
         self.setLayout(layout)
-    
+
     def set_generate_enabled(self, enabled):
         """Enable/disable generate button"""
         self.generate_btn.setEnabled(enabled)
@@ -591,22 +644,24 @@ class ConfigurationButtons(QtWidgets.QWidget):
         else:
             self.generate_btn.setStyleSheet("background-color: #777777")
 
+
 class ParameterCategory(QtWidgets.QWidget):
     """Widget for grouping parameters by category"""
-    
+
     def __init__(self, category_name, parameters, parent=None):
         super().__init__(parent)
         self.category_name = category_name
         self.parameters = parameters
         self.parameter_widgets = {}
         self.setup_ui()
-    
+
     def setup_ui(self):
         layout = QtWidgets.QVBoxLayout()
-        
+
         # Category header
         header = QtWidgets.QLabel(self.category_name)
-        header.setStyleSheet("""
+        header.setStyleSheet(
+            """
             QLabel {
                 font-size: 16px;
                 font-weight: bold;
@@ -615,27 +670,28 @@ class ParameterCategory(QtWidgets.QWidget):
                 border-bottom: 1px solid #444444;
                 margin-bottom: 10px;
             }
-        """)
+        """
+        )
         layout.addWidget(header)
-        
+
         # Parameter widgets
         for param_name, param_def in self.parameters:
             widget = ParameterWidget(param_def)
             self.parameter_widgets[param_name] = widget
             layout.addWidget(widget)
-        
+
         self.setLayout(layout)
-    
+
     def get_parameter_widgets(self):
         """Get all parameter widgets in this category"""
         return self.parameter_widgets
-    
+
     def set_values(self, values_dict):
         """Set values for parameters in this category"""
         for param_name, value in values_dict.items():
             if param_name in self.parameter_widgets:
                 self.parameter_widgets[param_name].set_value(value)
-    
+
     def get_values(self):
         """Get all parameter values from this category"""
         values = {}
@@ -644,7 +700,7 @@ class ParameterCategory(QtWidgets.QWidget):
             if value_str:
                 try:
                     # Try to convert to appropriate type
-                    if '.' in value_str:
+                    if "." in value_str:
                         values[param_name] = float(value_str)
                     else:
                         values[param_name] = int(value_str)
