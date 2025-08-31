@@ -11,8 +11,13 @@ import numpy as np
 # Import new modular components
 from haptic_harness_generator.core.config_manager import ConfigurationManager
 from haptic_harness_generator.core.validation_engine import ValidationEngine
-from haptic_harness_generator.ui.ui_helpers import (ParameterWidget, ValidationDisplay, ScalingHelper,
-                        PresetSelector, ParameterCategory)
+from haptic_harness_generator.ui.ui_helpers import (
+    ParameterWidget,
+    ValidationDisplay,
+    ScalingHelper,
+    PresetSelector,
+    ParameterCategory,
+)
 
 current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 rotate_icon_path = os.path.join(current_dir, "assets", "rotateIcon.png")
@@ -137,7 +142,8 @@ class MyMainWindow(MainWindow):
 
         # Title section
         title = QtWidgets.QLabel("Reference Diagram")
-        title.setStyleSheet("""
+        title.setStyleSheet(
+            """
             QLabel {
                 font-size: 18px;
                 font-weight: bold;
@@ -145,7 +151,8 @@ class MyMainWindow(MainWindow):
                 background-color: #2a2a3a;
                 border-radius: 5px;
             }
-        """)
+        """
+        )
         title.setAlignment(QtCore.Qt.AlignCenter)
 
         subtitle = QtWidgets.QLabel("← Numbered areas correspond to parameters")
@@ -161,7 +168,11 @@ class MyMainWindow(MainWindow):
 
         # Use parameter panel width for scaling, with fallback to reasonable default
         try:
-            panel_width = self.parameter_panel.width() if hasattr(self, 'parameter_panel') else 400
+            panel_width = (
+                self.parameter_panel.width()
+                if hasattr(self, "parameter_panel")
+                else 400
+            )
             # If width is 0 (not yet rendered), use a reasonable default
             target_width = panel_width * 1.5 if panel_width > 0 else 600
         except (AttributeError, TypeError):
@@ -212,25 +223,29 @@ class MyMainWindow(MainWindow):
         self.export_btn.clicked.connect(self.export_configuration)
         self.export_btn.setMaximumWidth(70)  # Reduced from 80px
         self.export_btn.setMaximumHeight(30)  # Compact height
-        self.export_btn.setStyleSheet("""
+        self.export_btn.setStyleSheet(
+            """
             QPushButton {
                 font-size: 12px;
                 padding: 4px 8px;
                 border-radius: 3px;
             }
-        """)
+        """
+        )
 
         self.import_btn = QtWidgets.QPushButton("Import")
         self.import_btn.clicked.connect(self.import_configuration)
         self.import_btn.setMaximumWidth(70)  # Reduced from 80px
         self.import_btn.setMaximumHeight(30)  # Compact height
-        self.import_btn.setStyleSheet("""
+        self.import_btn.setStyleSheet(
+            """
             QPushButton {
                 font-size: 12px;
                 padding: 4px 8px;
                 border-radius: 3px;
             }
-        """)
+        """
+        )
 
         top_layout.addWidget(self.export_btn)
         top_layout.addWidget(self.import_btn)
@@ -246,7 +261,8 @@ class MyMainWindow(MainWindow):
         ref_note = QtWidgets.QLabel(
             "📌 Numbers [1-25] in parameters correspond to labeled areas in the reference diagram →"
         )
-        ref_note.setStyleSheet("""
+        ref_note.setStyleSheet(
+            """
             QLabel {
                 color: #aaaaaa;
                 font-style: italic;
@@ -256,13 +272,15 @@ class MyMainWindow(MainWindow):
                 border-radius: 3px;
                 margin-bottom: 1px;
             }
-        """)
+        """
+        )
 
         # Second message - range clarification
         range_note = QtWidgets.QLabel(
             "📌 Ranges shown (e.g., 20-50 for [1]) indicate ideal values for that parameter"
         )
-        range_note.setStyleSheet("""
+        range_note.setStyleSheet(
+            """
             QLabel {
                 color: #aaaaaa;
                 font-style: italic;
@@ -271,7 +289,8 @@ class MyMainWindow(MainWindow):
                 background-color: #2a2a3a;
                 border-radius: 3px;
             }
-        """)
+        """
+        )
 
         messages_layout.addWidget(ref_note)
         messages_layout.addWidget(range_note)
@@ -325,8 +344,7 @@ class MyMainWindow(MainWindow):
         # Validation display with expanded height
         self.validation_display = ValidationDisplay()
         self.validation_display.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.MinimumExpanding
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.MinimumExpanding
         )
 
         # Action buttons (Validate and Generate only)
@@ -336,7 +354,8 @@ class MyMainWindow(MainWindow):
         self.validate_btn = QtWidgets.QPushButton("Validate")
         self.validate_btn.clicked.connect(self.validate_configuration)
         self.validate_btn.setMaximumWidth(80)  # Compact width
-        self.validate_btn.setStyleSheet("""
+        self.validate_btn.setStyleSheet(
+            """
             QPushButton {
                 font-size: 11px;
                 padding: 6px 10px;
@@ -346,7 +365,8 @@ class MyMainWindow(MainWindow):
             QPushButton:hover {
                 color: #ffffff;
             }
-        """)
+        """
+        )
 
         self.generate_btn = QtWidgets.QPushButton("Generate")
         self.generate_btn.clicked.connect(self.generate_parts)
@@ -401,7 +421,9 @@ class MyMainWindow(MainWindow):
                 self.validation_timer.start(500)
         except Exception as e:
             # Log the error but don't crash the application
-            print(f"Warning: Failed to update parameter {param_name} with value '{value}': {e}")
+            print(
+                f"Warning: Failed to update parameter {param_name} with value '{value}': {e}"
+            )
             # The parameter widget will handle visual feedback
             pass
 
@@ -418,7 +440,10 @@ class MyMainWindow(MainWindow):
             for param_name, value in config.items():
                 if hasattr(self.generator, param_name):
                     # Handle angle conversions
-                    if param_name in ["mountBottomAngleOpening", "mountTopAngleOpening"]:
+                    if param_name in [
+                        "mountBottomAngleOpening",
+                        "mountTopAngleOpening",
+                    ]:
                         value = value * np.pi / 180  # Convert to radians
                     # Ensure integer parameters are actually integers
                     elif param_name in ["numSides", "numMagnetsInRing"]:
@@ -455,7 +480,8 @@ class MyMainWindow(MainWindow):
 
         # Add visual feedback to generate button
         if result.is_valid:
-            self.generate_btn.setStyleSheet("""
+            self.generate_btn.setStyleSheet(
+                """
                 QPushButton {
                     background-color: #44aa44;
                     border: 2px solid #66ff66;
@@ -465,7 +491,8 @@ class MyMainWindow(MainWindow):
                 QPushButton:hover {
                     background-color: #55bb55;
                 }
-            """)
+            """
+            )
             self.pbar.setFormat("✓ Valid Configuration - Ready to Generate")
         else:
             self.generate_btn.setStyleSheet("")
@@ -479,14 +506,20 @@ class MyMainWindow(MainWindow):
             QtWidgets.QMessageBox.warning(
                 self,
                 "Validation Failed",
-                "Please fix validation errors before generating."
+                "Please fix validation errors before generating.",
             )
             return
+
+        # Ensure all boxes have sent "finished_editing" signal
+        for parameter in self.parameter_widgets.values():
+            parameter._on_editing_finished()
 
         # Auto-save configuration before generation
         try:
             current_config = self.get_current_configuration()
-            success = ConfigurationManager.auto_save_config(current_config, self.userDir)
+            success = ConfigurationManager.auto_save_config(
+                current_config, self.userDir
+            )
 
             if success:
                 # Update progress bar to show auto-save success
@@ -496,7 +529,7 @@ class MyMainWindow(MainWindow):
                 QtWidgets.QMessageBox.warning(
                     self,
                     "Auto-save Warning",
-                    "Failed to auto-save configuration, but generation will continue."
+                    "Failed to auto-save configuration, but generation will continue.",
                 )
         except Exception as e:
             # Log error but don't stop generation
@@ -504,7 +537,7 @@ class MyMainWindow(MainWindow):
             QtWidgets.QMessageBox.warning(
                 self,
                 "Auto-save Warning",
-                f"Failed to auto-save configuration: {str(e)}\nGeneration will continue."
+                f"Failed to auto-save configuration: {str(e)}\nGeneration will continue.",
             )
 
         # Use the existing regen method
@@ -604,10 +637,7 @@ class MyMainWindow(MainWindow):
                 )
                 # Add rotation hint text instead of logo (PyVista 0.42.3 compatible)
                 self.plotters[-1].add_text(
-                    "↻ Drag to rotate",
-                    position='lower_left',
-                    font_size=8,
-                    color='gray'
+                    "↻ Drag to rotate", position="lower_left", font_size=8, color="gray"
                 )
             plotLayout.addLayout(subPlotLayout)
 
@@ -626,7 +656,9 @@ class MyMainWindow(MainWindow):
             self.pbar.setFormat("Ready to Generate")
         except Exception as e:
             # Log the error but don't crash the application
-            print(f"Warning: Failed to set generator attribute {attrName} to '{val}': {e}")
+            print(
+                f"Warning: Failed to set generator attribute {attrName} to '{val}': {e}"
+            )
             # Keep the UI in a consistent state
             self.pbar.setFormat("Parameter Error - Check Input")
             # Don't update the plotters if there was an error
@@ -716,8 +748,6 @@ class MyMainWindow(MainWindow):
             msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
             retval = msg.exec_()
 
-
-
     def get_current_configuration(self):
         """
         Collect current configuration state from all parameter widgets.
@@ -751,7 +781,7 @@ class MyMainWindow(MainWindow):
             self,
             "Export Configuration",
             f"{self.userDir}/config.json",
-            "JSON Files (*.json)"
+            "JSON Files (*.json)",
         )
 
         if filename:
@@ -759,15 +789,13 @@ class MyMainWindow(MainWindow):
 
             if success:
                 QtWidgets.QMessageBox.information(
-                    self,
-                    "Export Successful",
-                    f"Configuration exported to {filename}"
+                    self, "Export Successful", f"Configuration exported to {filename}"
                 )
             else:
                 QtWidgets.QMessageBox.critical(
                     self,
                     "Export Failed",
-                    "Failed to export configuration. Check file permissions."
+                    "Failed to export configuration. Check file permissions.",
                 )
 
     def import_configuration(self):
@@ -775,10 +803,7 @@ class MyMainWindow(MainWindow):
         from PyQt5.QtWidgets import QFileDialog
 
         filename, _ = QFileDialog.getOpenFileName(
-            self,
-            "Import Configuration",
-            self.userDir,
-            "JSON Files (*.json)"
+            self, "Import Configuration", self.userDir, "JSON Files (*.json)"
         )
 
         if filename:
@@ -793,7 +818,10 @@ class MyMainWindow(MainWindow):
                 for param_name, value in config.items():
                     if hasattr(self.generator, param_name):
                         # Handle angle conversions
-                        if param_name in ["mountBottomAngleOpening", "mountTopAngleOpening"]:
+                        if param_name in [
+                            "mountBottomAngleOpening",
+                            "mountTopAngleOpening",
+                        ]:
                             value = value * np.pi / 180  # Convert to radians
                         # Ensure integer parameters are always integers
                         elif param_name in ["numSides", "numMagnetsInRing"]:
@@ -810,13 +838,11 @@ class MyMainWindow(MainWindow):
                 self.validate_configuration()
 
                 QtWidgets.QMessageBox.information(
-                    self,
-                    "Import Successful",
-                    "Configuration imported successfully"
+                    self, "Import Successful", "Configuration imported successfully"
                 )
             else:
                 QtWidgets.QMessageBox.critical(
                     self,
                     "Import Failed",
-                    "Failed to import configuration. Check file format and try again."
+                    "Failed to import configuration. Check file format and try again.",
                 )

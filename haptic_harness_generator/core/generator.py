@@ -1169,6 +1169,10 @@ class Generator(QRunnable):
         vertices = []
         lower_bound = int(resolution / 2)
         thetas = np.pi / resolution * np.arange(lower_bound) - np.pi / 2
+
+        height -= r * 2
+        width -= r * 2
+
         vertices.extend(
             np.column_stack(
                 (
@@ -1743,23 +1747,34 @@ class Generator(QRunnable):
     def generateMagnetClip(self):
         # the origin centers at the mid point of the line connecting the two magnets
         origin = np.array((0, 0, 0))
-        width = (
-            self.distanceBetweenMagnetClipAndSlot
-            + self.magnetRadius * 2
-            + self.magnetClipRingThickness * 3
-        )
         height = (
             4 * self.magnetClipRingThickness
             + 2 * self.magnetRadius
             + self.distanceBetweenMagnetsInClip
         )
-        r = 2 * self.magnetClipRingThickness + self.magnetRadius
+        neededSlotWidth = (
+            self.slotWidth + self.slotHeight / 2 + 2 * self.magnetClipRingThickness
+        )
+        height = max(height, neededSlotWidth)
 
-        bottomVerts, bottomFaces = self.generateSlot(origin, width, height, r)
+        r = self.magnetClipRingThickness
+        width = (
+            self.distanceBetweenMagnetClipAndSlot
+            + self.magnetRadius * 2
+            + self.magnetClipRingThickness * 5
+            + self.slotHeight * 2
+            + self.slotSpacing
+            + r
+        )
+        base_offset = -(self.magnetRadius + self.magnetClipRingThickness * 2)
+
+        baseHalfOrigin = np.array((origin[0], origin[1] + base_offset, origin[2]))
+
+        bottomVerts, bottomFaces = self.generateSlot(baseHalfOrigin, width, height, r)
         topHalfOrigin = np.array(
             (
                 origin[0],
-                origin[1],
+                origin[1] + base_offset,
                 origin[2] + self.magnetClipThickness + self.magnetThickness * 2,
             )
         )
@@ -1783,7 +1798,6 @@ class Generator(QRunnable):
         base = pv.PolyData(totalVerts, totalFaces).compute_normals(
             consistent_normals=True, auto_orient_normals=True
         )
-
         # Create holes for magnets and bottom clip
         for i in range(2):
             magnetOrigin = np.array(
@@ -1840,20 +1854,26 @@ class Generator(QRunnable):
                     + self.slotHeight / 2
                     + i
                     * (
-                        self.slotHeight + 2 * self.slotSpacing
+                        self.slotHeight + self.slotSpacing
                     ),  # Vertical offset using configurable spacing
                     origin[2],
                 )
             )
-
+            small_slot_r = self.slotHeight / 4
             bottomVerts, bottomFaces = self.generateSlot(
-                slotOrigin, self.slotHeight, self.slotWidth, self.slotHeight / 4
+                slotOrigin,
+                self.slotHeight,
+                self.slotWidth + 2 * small_slot_r,
+                small_slot_r,
             )
             topHalfOrigin = slotOrigin + np.array(
                 (0, 0, self.magnetClipThickness + self.magnetThickness * 2)
             )
             topVerts, topFaces = self.generateSlot(
-                topHalfOrigin, self.slotHeight, self.slotWidth, self.slotHeight / 4
+                topHalfOrigin,
+                self.slotHeight,
+                self.slotWidth + 2 * small_slot_r,
+                small_slot_r,
             )
 
             totalVerts = []
