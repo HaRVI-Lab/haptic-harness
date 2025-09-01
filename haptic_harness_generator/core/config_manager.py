@@ -141,7 +141,7 @@ class ConfigurationManager:
             default_value=1,
             tooltip="Thickness of individual magnets",
             category="Magnet Parameters",
-            validation_dependencies=[],
+            validation_dependencies=["mountHeight", "mountShellThickness"],
         ),
         "slotWidth": ParameterDefinition(
             name="slotWidth",
@@ -253,7 +253,7 @@ class ConfigurationManager:
             default_value=10,
             tooltip="Height of the mount component",
             category="Mount Parameters",
-            validation_dependencies=[],
+            validation_dependencies=["magnetThickness", "mountShellThickness"],
         ),
         "mountShellThickness": ParameterDefinition(
             name="mountShellThickness",
@@ -265,7 +265,7 @@ class ConfigurationManager:
             default_value=2,
             tooltip="Thickness of the mount shell walls",
             category="Mount Parameters",
-            validation_dependencies=[],
+            validation_dependencies=["magnetThickness", "mountHeight"],
         ),
         "mountBottomAngleOpening": ParameterDefinition(
             name="mountBottomAngleOpening",
@@ -550,6 +550,9 @@ class ConfigurationManager:
         slotHeight = config.get("slotHeight", 1.5)
         magnetClipRingThickness = config.get("magnetClipRingThickness", 1.5)
         numMagnetsInRing = config.get("numMagnetsInRing", 6)
+        mountHeight = config.get("mountHeight", 10)
+        magnetThickness = config.get("magnetThickness", 1)
+        mountShellThickness = config.get("mountShellThickness", 2)
 
         # Critical validation 1: Polygon edge vs slot width
         polygon_edge = 2 * concentricPolygonRadius * np.tan(np.pi / numSides)
@@ -634,6 +637,20 @@ class ConfigurationManager:
                 f"    • Increase {cls.get_parameter_display('magnetRingRadius')} to > {safe_ring_radius:.1f}mm"
             )
             params.extend(["magnetRingRadius", "magnetRadius", "numMagnetsInRing"])
+
+        # Critical validation 5: mount height > magnet thickness
+        if mountHeight < magnetThickness + mountShellThickness + tolerance:
+            safe_mount_height = magnetThickness + mountShellThickness + tolerance
+            safe_magnet_thickness = mountHeight - tolerance - mountShellThickness
+            safe_mount_shell_thickness = mountHeight - tolerance - magnetThickness
+            errors.append(
+                f"Mount height too short for magnetthickness and mountShellThickness:\n"
+                f"  Options:\n"
+                f"    • Increase {cls.get_parameter_display('mountHeight')} to > {safe_mount_height:.0f}\n"
+                f"    • Reduce {cls.get_parameter_display('magnetThickness')} to < {safe_magnet_thickness:.0f}\n"
+                f"    • Reduce {cls.get_parameter_display('mountShellThickness')} to < {safe_mount_shell_thickness:.0f}\n"
+            )
+            params.extend(["mountHeight", "magnetThickness", "mountShellThickness"])
 
         return errors, params
 

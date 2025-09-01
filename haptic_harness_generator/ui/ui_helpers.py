@@ -94,7 +94,7 @@ class ParameterWidget(QtWidgets.QWidget):
         unit_label.setMaximumWidth(unit_width)
 
         # Enhanced range label with improved styling
-        range_text = f"{self.param_def.min_value:.0f}-{self.param_def.max_value:.0f}"
+        range_text = f"{self.param_def.min_value:.1f}-{self.param_def.max_value:.0f}"
         range_label = QtWidgets.QLabel(range_text)
         range_label.setStyleSheet(
             """

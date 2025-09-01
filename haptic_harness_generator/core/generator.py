@@ -19,6 +19,7 @@ from ezdxf.layouts import base
 from ezdxf.math.bulge import angle
 from ezdxf.addons.drawing import Frontend, RenderContext
 from ezdxf.addons.drawing import layout, svg
+from ezdxf import zoom
 import numpy as np
 import pyvista as pv
 import ezdxf
@@ -159,7 +160,7 @@ class Generator(QRunnable):
 
     def validate(self):
         messages = []
-        tolerance = 1
+        tolerance = 0.5
         validatable = [
             "concentricPolygonRadius",
             "tactorRadius",
@@ -660,6 +661,7 @@ class Generator(QRunnable):
             pvLines.extend(new_lines)
             for k in range(0, new_len, 2):
                 msp.add_line(new_verts[k].tolist()[0], new_verts[k + 1].tolist()[0])
+        zoom.extents(msp)
         doc.saveas(f"{self.userDir}/tyvekTile.dxf")
 
         backend = svg.SVGBackend()
@@ -704,6 +706,7 @@ class Generator(QRunnable):
         msp = doc.modelspace()
         pvVerts, pvLines = self.genCenter(msp)
         pvVerts, pvLines = self.genOuterPolygon(msp, pvVerts, pvLines)
+        zoom.extents(msp)
         doc.saveas(f"{self.userDir}/foamPiece.dxf")
         backend = svg.SVGBackend()
         Frontend(RenderContext(doc), backend).draw_layout(msp)
@@ -898,6 +901,7 @@ class Generator(QRunnable):
         pvVerts, pvLines = self.genCenter(msp)
         pvVerts, pvLines = self.genOuterPolygon(msp, pvVerts, pvLines)
         pvVerts, pvLines = self.genMagnetHoles(msp, pvVerts, pvLines)
+        zoom.extents(msp)
         doc.saveas(f"{self.userDir}/magnetRing.dxf")
         backend = svg.SVGBackend()
         Frontend(RenderContext(doc), backend).draw_layout(msp)
