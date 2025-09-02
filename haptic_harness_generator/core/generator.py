@@ -23,7 +23,7 @@ from ezdxf import zoom
 import numpy as np
 import pyvista as pv
 import ezdxf
-from time import perf_counter
+from time import monotonic, perf_counter
 from PyQt5.QtCore import QRunnable, pyqtSignal, QObject
 from vtkbool.vtkBool import vtkPolyDataBooleanFilter
 
@@ -71,15 +71,15 @@ class Generator(QRunnable):
             self.mountTopAngleOpening = 45 * np.pi / 180  # 45 degrees to radians
         else:
             # Fallback to original hardcoded values
-            self.concentricPolygonRadius = 30
-            self.tactorRadius = 10
+            self.concentricPolygonDiameter = 30 * 2
+            self.tactorDiameter = 10 * 2
             self.numSides = 6
             self.slotWidth = 30
             self.slotHeight = 1.5
             self.slotBorderRadius = 10
-            self.magnetRadius = 5
+            self.magnetDiameter = 5 * 2
             self.magnetThickness = 1
-            self.magnetRingRadius = 20
+            self.magnetRingDiameter = 20 * 2
             self.numMagnetsInRing = 6
             self.magnetClipThickness = 1.5
             self.magnetClipRingThickness = 1.5
@@ -87,7 +87,7 @@ class Generator(QRunnable):
             self.distanceBetweenMagnetClipAndPolygonEdge = 3
             self.distanceBetweenMagnetClipAndSlot = 3
             self.foamThickness = 1
-            self.mountRadius = 13
+            self.mountDiameter = 13 * 2
             self.mountHeight = 10
             self.mountShellThickness = 2
             self.mountBottomAngleOpening = np.pi / 3
@@ -162,15 +162,15 @@ class Generator(QRunnable):
         messages = []
         tolerance = 0.5
         validatable = [
-            "concentricPolygonRadius",
-            "tactorRadius",
+            "concentricPolygonDiameter",
+            "tactorDiameter",
             "numSides",
             "slotWidth",
             "slotHeight",
             "slotBorderRadius",
-            "magnetRadius",
+            "magnetDiameter",
             "magnetThickness",
-            "magnetRingRadius",
+            "magnetRingDiameter",
             "numMagnetsInRing",
             "magnetClipThickness",
             "magnetClipRingThickness",
@@ -178,7 +178,7 @@ class Generator(QRunnable):
             "distanceBetweenMagnetClipAndPolygonEdge",
             "distanceBetweenMagnetClipAndSlot",
             "foamThickness",
-            "mountRadius",
+            "mountDiameter",
             "mountHeight",
             "mountShellThickness",
             "mountBottomAngleOpening",
@@ -202,76 +202,82 @@ class Generator(QRunnable):
             if attr in validatable and (val <= 0 or val == None):
                 messages.append(f"{attr} must be some positive non-zero value")
 
-        if self.tactorRadius >= self.concentricPolygonRadius:
+        if self.tactorDiameter >= self.concentricPolygonDiameter:
             messages.append(
-                "The tactorRadius is too large for the concentricPolygonRadius"
+                "The tactorDiameter is too large for the concentricPolygonDiameter"
             )
-        if self.mountRadius > self.magnetRingRadius - self.magnetRadius - tolerance:
+        if (
+            self.mountDiameter
+            > self.magnetRingDiameter - self.magnetDiameter - 2 * tolerance
+        ):
             messages.append(
-                "The mountRadius is too large for the magnetRingRadius and magnetRadius"
+                "The mountDiameter is too large for the magnetRingDiameter and magnetDiameter"
             )
         if self.mountBottomAngleOpening >= 3 * np.pi / 2:
             messages.append("the mountBottomAngleOpening must be less than 3 * PI / 2")
         if self.mountTopAngleOpening > 3 * np.pi / 2:
             messages.append("the mountTopAngleOpening must be less than 3 * PI / 2")
-        if self.distanceBetweenMagnetsInClip < 2 * self.magnetRadius + tolerance:
+        if self.distanceBetweenMagnetsInClip < self.magnetDiameter + tolerance:
             messages.append(
-                "The distanceBetweenMagnetsInClip and magnetRadius are incompatible; try increasing distanceBetweenMagnetClipAndSlot decreasing magnetRadius"
+                "The distanceBetweenMagnetsInClip and magnetDiameter are incompatible; try increasing distanceBetweenMagnetClipAndSlot decreasing magnetDiameter"
             )
         # Handle edge case for 2-sided configurations
         if self.numSides == 2:
             # For 2 sides, use direct clearance check instead of angular calculation
-            maxTactorRadius = (
-                self.magnetRingRadius - self.magnetRadius - 2
-            )  # 2mm tolerance
+            maxTactorDiameter = (
+                self.magnetRingDiameter - self.magnetDiameter - 4
+            )  # 4mm tolerance
         else:
-            maxTactorRadius = self.tactorRadius / (np.cos(np.pi / self.numSides))
-        if maxTactorRadius + tolerance > self.magnetRingRadius - self.magnetRadius:
-            min_ring_radius = maxTactorRadius + self.magnetRadius + tolerance
+            maxTactorDiameter = self.tactorDiameter / (np.cos(np.pi / self.numSides))
+        if (
+            maxTactorDiameter + 2 * tolerance
+            > self.magnetRingDiameter - self.magnetDiameter
+        ):
+            min_ring_diameter = maxTactorDiameter + self.magnetDiameter + 2 * tolerance
             max_tactor = (
-                (self.magnetRingRadius - self.magnetRadius - tolerance)
+                (self.magnetRingDiameter - self.magnetDiameter - 2 * tolerance)
                 * np.cos(np.pi / self.numSides)
                 if self.numSides > 2
-                else self.tactorRadius
+                else self.tactorDiameter
             )
             suggestion = self.get_validation_suggestion(
                 "tactor_magnet_incompatible",
                 {
-                    "tactor": self.tactorRadius,
-                    "min_ring": min_ring_radius,
+                    "tactor": self.tactorDiameter,
+                    "min_ring": min_ring_diameter,
                     "max_tactor": max_tactor,
                 },
             )
             messages.append(f"{suggestion['message']} {suggestion['fix']}")
         if (
-            self.concentricPolygonRadius
-            < self.magnetRingRadius + self.magnetRadius + tolerance
+            self.concentricPolygonDiameter
+            < self.magnetRingDiameter + self.magnetDiameter + tolerance * 2
         ):
             messages.append(
-                "The concentricPolygonRadius, magnetRadius, and magnetRingRadius are incompatible"
+                "The concentricPolygonDiameter, magnetDiameter, and magnetRingDiameter are incompatible"
             )
-        concentricPolygonEdge = (
-            2 * self.concentricPolygonRadius * np.tan(np.pi / self.numSides)
+        concentricPolygonEdge = self.concentricPolygonDiameter * np.tan(
+            np.pi / self.numSides
         )
         if self.slotWidth + 2 * tolerance > concentricPolygonEdge:
-            min_radius = (self.slotWidth + 2 * tolerance) / (
-                2 * np.tan(np.pi / self.numSides)
+            min_diameter = (self.slotWidth + 2 * tolerance) / (
+                np.tan(np.pi / self.numSides)
             )
             suggestion = self.get_validation_suggestion(
                 "slot_too_wide",
                 {
                     "slot": self.slotWidth,
                     "edge": concentricPolygonEdge,
-                    "min_radius": min_radius,
+                    "min_diameter": min_diameter,
                 },
             )
             messages.append(f"{suggestion['message']} {suggestion['fix']}")
 
         if (
             concentricPolygonEdge
-            < 2 * self.magnetRadius + 2 * tolerance + self.distanceBetweenMagnetsInClip
+            < self.magnetDiameter + 2 * tolerance + self.distanceBetweenMagnetsInClip
         ):
-            messages.append("The polygon's edge is too short for the magnetRadius")
+            messages.append("The polygon's edge is too short for the magnetDiameter")
 
         if self.distanceBetweenMagnetsInClip < tolerance:
             messages.append(
@@ -289,7 +295,7 @@ class Generator(QRunnable):
         x = (concentricPolygonEdge - self.slotWidth) / 2
         y = (
             self.distanceBetweenMagnetClipAndPolygonEdge
-            + 2 * (self.magnetRadius + self.magnetClipRingThickness)
+            + 2 * (self.magnetDiameter / 2 + self.magnetClipRingThickness)
             + self.distanceBetweenMagnetClipAndSlot
             + self.slotHeight / 2
         )
@@ -300,7 +306,7 @@ class Generator(QRunnable):
         dist = np.sin(beta + theta) * hypo
         if 2 * dist < 2 * self.slotBorderRadius + tolerance:
             messages.append(
-                f"The edges of the flaps are intersecting; try decreasing slotWidth, increasing concentricPolygonRadius, decreasing slotBorderRadius, or decreasing numSides"
+                f"The edges of the flaps are intersecting; try decreasing slotWidth, increasing concentricPolygonDiameter, decreasing slotBorderRadius, or decreasing numSides"
             )
 
         if self.strapClipRim < tolerance:
@@ -336,8 +342,8 @@ class Generator(QRunnable):
         """Generate specific suggestions for validation errors"""
         suggestions = {
             "tactor_magnet_incompatible": {
-                "message": f"Tactor radius ({current_values['tactor']:.1f}mm) requires minimum clearance from magnets.",
-                "fix": f"Try: Increase Magnet Ring Radius to >{current_values['min_ring']:.0f}mm OR Decrease Tactor Radius to <{current_values['max_tactor']:.1f}mm",
+                "message": f"Tactor diameter ({current_values['tactor']:.1f}mm) requires minimum clearance from magnets.",
+                "fix": f"Try: Increase Magnet Ring Diameter to >{current_values['min_ring']:.0f}mm OR Decrease Tactor Diameter to <{current_values['max_tactor']:.1f}mm",
             },
             "slot_too_wide": {
                 "message": f"Slot width ({current_values['slot']:.1f}mm) exceeds polygon edge length ({current_values['edge']:.1f}mm).",
@@ -345,8 +351,9 @@ class Generator(QRunnable):
             },
             "polygon_too_small": {
                 "message": f"Concentric polygon too small for magnet configuration.",
-                "fix": f"Try: Increase Concentric Polygon Radius to >{current_values['min_radius']:.0f}mm",
+                "fix": f"Try: Increase Concentric Polygon Diameter to >{current_values['min_diameter']:.0f}mm",
             },
+            # WARN: this is never called
             "mount_radius_large": {
                 "message": f"Mount radius ({current_values['mount']:.1f}mm) interferes with magnets.",
                 "fix": f"Try: Reduce Mount Radius to <{current_values['max_mount']:.0f}mm",
@@ -482,8 +489,8 @@ class Generator(QRunnable):
         vertices = []
         pyVistaLines = [(2, i, (i + 1) % 6) for i in range(6)]
         thetas = np.arange(6) * 2 * np.pi / 6
-        x_vals = self.tactorRadius * np.cos(thetas)
-        y_vals = self.tactorRadius * np.sin(thetas)
+        x_vals = (self.tactorDiameter / 2) * np.cos(thetas)
+        y_vals = (self.tactorDiameter / 2) * np.sin(thetas)
         z_vals = np.zeros(6)
         vertices = np.column_stack((x_vals, y_vals, z_vals)).tolist()
         for i in range(6):
@@ -495,25 +502,19 @@ class Generator(QRunnable):
 
         lines = []
         # polygon side
-        polygonSideHalf = self.concentricPolygonRadius * np.tan(theta / 2)
-        # lines.append(
-        #    (
-        #        [polygonSideHalf, self.concentricPolygonRadius],
-        #        [-1 * polygonSideHalf, self.concentricPolygonRadius],
-        #    )
-        # )
+        polygonSideHalf = (self.concentricPolygonDiameter / 2) * np.tan(theta / 2)
 
         # magnet clip holes
         resolution = 30
         yOffset = (
             self.distanceBetweenMagnetClipAndPolygonEdge
-            + self.concentricPolygonRadius
-            + self.magnetRadius
+            + self.concentricPolygonDiameter / 2
+            + self.magnetDiameter / 2
             + self.magnetClipRingThickness
         )
         step = 2 * np.pi / resolution
         angles = np.arange(resolution) * step
-        r = self.magnetRadius + self.magnetClipRingThickness
+        r = self.magnetDiameter / 2 + self.magnetClipRingThickness
         base_x_vals = r * np.cos(angles)
         y_vals = r * np.sin(angles) + yOffset
         offset = self.distanceBetweenMagnetsInClip / 2
@@ -526,8 +527,8 @@ class Generator(QRunnable):
         # slot
         yOffset = (
             self.distanceBetweenMagnetClipAndPolygonEdge
-            + self.concentricPolygonRadius
-            + 2 * (self.magnetRadius + self.magnetClipRingThickness)
+            + self.concentricPolygonDiameter / 2
+            + 2 * (self.magnetDiameter / 2 + self.magnetClipRingThickness)
             + self.distanceBetweenMagnetClipAndSlot
         )
         lines.append(([-self.slotWidth / 2, yOffset], [self.slotWidth / 2, yOffset]))
@@ -558,8 +559,8 @@ class Generator(QRunnable):
             resolution = 10
             yOffset = (
                 self.distanceBetweenMagnetClipAndPolygonEdge
-                + self.concentricPolygonRadius
-                + 2 * (self.magnetRadius + self.magnetClipRingThickness)
+                + self.concentricPolygonDiameter / 2
+                + 2 * (self.magnetDiameter / 2 + self.magnetClipRingThickness)
                 + self.distanceBetweenMagnetClipAndSlot
                 + self.slotHeight / 2
             )
@@ -597,7 +598,10 @@ class Generator(QRunnable):
             for j in range(2):
                 lines.append(
                     (
-                        [signs[j] * polygonSideHalf, self.concentricPolygonRadius],
+                        [
+                            signs[j] * polygonSideHalf,
+                            self.concentricPolygonDiameter / 2,
+                        ],
                         init_val_x_vals[j],
                     )
                 )
@@ -615,8 +619,8 @@ class Generator(QRunnable):
         else:
             yOffset = (
                 self.distanceBetweenMagnetClipAndPolygonEdge
-                + self.concentricPolygonRadius
-                + 2 * (self.magnetRadius + self.magnetClipRingThickness)
+                + self.concentricPolygonDiameter / 2
+                + 2 * (self.magnetDiameter / 2 + self.magnetClipRingThickness)
                 + self.distanceBetweenMagnetClipAndSlot
                 + self.slotHeight
                 + self.slotBorderRadius
@@ -624,13 +628,13 @@ class Generator(QRunnable):
             lines.append(([polygonSideHalf, yOffset], [-polygonSideHalf, yOffset]))
             lines.append(
                 (
-                    [polygonSideHalf, self.concentricPolygonRadius],
+                    [polygonSideHalf, self.concentricPolygonDiameter / 2],
                     [polygonSideHalf, yOffset],
                 )
             )
             lines.append(
                 (
-                    [-polygonSideHalf, self.concentricPolygonRadius],
+                    [-polygonSideHalf, self.concentricPolygonDiameter / 2],
                     [-polygonSideHalf, yOffset],
                 )
             )
@@ -680,10 +684,10 @@ class Generator(QRunnable):
 
     def genOuterPolygon(self, msp, pvVerts, pvLines):
         theta = 2 * np.pi / self.numSides
-        polygonSideHalf = self.concentricPolygonRadius * np.tan(theta / 2)
+        polygonSideHalf = self.concentricPolygonDiameter / 2 * np.tan(theta / 2)
         ogPair = (
-            [polygonSideHalf, self.concentricPolygonRadius],
-            [-1 * polygonSideHalf, self.concentricPolygonRadius],
+            [polygonSideHalf, self.concentricPolygonDiameter / 2],
+            [-1 * polygonSideHalf, self.concentricPolygonDiameter / 2],
         )
         for i in range(self.numSides):
             theta = 2 * np.pi / self.numSides * i
@@ -866,21 +870,21 @@ class Generator(QRunnable):
             stock = np.arange(resolution)
             thetas = 2 * np.pi / resolution * stock
             x_vals_v1 = (
-                self.magnetRadius * np.cos(thetas)
-                + np.cos(theta) * self.magnetRingRadius
+                self.magnetDiameter / 2 * np.cos(thetas)
+                + np.cos(theta) * self.magnetRingDiameter / 2
             )
             y_vals_v1 = (
-                self.magnetRadius * np.sin(thetas)
-                + np.sin(theta) * self.magnetRingRadius
+                self.magnetDiameter / 2 * np.sin(thetas)
+                + np.sin(theta) * self.magnetRingDiameter / 2
             )
             v1 = np.column_stack((x_vals_v1, y_vals_v1))
             x_vals_v2 = (
-                self.magnetRadius * np.cos(np.roll(thetas, -1))
-                + np.cos(theta) * self.magnetRingRadius
+                self.magnetDiameter / 2 * np.cos(np.roll(thetas, -1))
+                + np.cos(theta) * self.magnetRingDiameter / 2
             )
             y_vals_v2 = (
-                self.magnetRadius * np.sin(np.roll(thetas, -1))
-                + np.sin(theta) * self.magnetRingRadius
+                self.magnetDiameter / 2 * np.sin(np.roll(thetas, -1))
+                + np.sin(theta) * self.magnetRingDiameter / 2
             )
             v2 = np.column_stack((x_vals_v2, y_vals_v2))
             combined = np.column_stack((v1, v2)).reshape(-1, 2)
@@ -986,7 +990,9 @@ class Generator(QRunnable):
     def generateBase(self):
         prismHeight = 10
         polygon_theta = 2 * np.pi / self.numSides
-        polygon_edge_half = self.concentricPolygonRadius * np.tan(polygon_theta / 2)
+        polygon_edge_half = (
+            self.concentricPolygonDiameter / 2 * np.tan(polygon_theta / 2)
+        )
         incentric_radius = polygon_edge_half / np.sin(polygon_theta / 2)
 
         # NEW: Pre-check for geometry conflicts
@@ -994,26 +1000,26 @@ class Generator(QRunnable):
         for i in range(self.numMagnetsInRing):
             theta = 2 * np.pi / self.numMagnetsInRing * i
             magnet_origin = (
-                self.magnetRingRadius * np.cos(theta),
-                self.magnetRingRadius * np.sin(theta),
+                self.magnetRingDiameter / 2 * np.cos(theta),
+                self.magnetRingDiameter / 2 * np.sin(theta),
                 0,
             )
             if self.check_geometry_overlap(
                 tactor_origin[:2],
-                self.tactorRadius,
+                self.tactorDiameter / 2,
                 magnet_origin[:2],
-                self.magnetRadius,
+                self.magnetDiameter / 2,
                 min_distance=2,
             ):
                 raise ValueError(
                     f"Geometry overlap detected: Magnet {i} conflicts with tactor cavity. "
-                    f"Increase Magnet Ring Radius or decrease Tactor Radius."
+                    f"Increase Magnet Ring Diameter or decrease Tactor Diameter."
                 )
 
         # Continue with existing code...
         prism = self.polygonalPrismSlanted(
-            radiusBottom=self.tactorRadius,
-            radiusTop=self.tactorRadius * 0.8,
+            radiusBottom=self.tactorDiameter / 2,
+            radiusTop=self.tactorDiameter / 2 * 0.8,
             res=6,
             height=prismHeight,
             origin=(0, 0, self.magnetThickness / 2 + 1 + prismHeight / 2),
@@ -1031,13 +1037,13 @@ class Generator(QRunnable):
         for i in range(self.numMagnetsInRing):
             theta = 2 * np.pi / self.numMagnetsInRing * i
             ogPoint = (
-                self.magnetRingRadius * np.cos(theta),
-                self.magnetRingRadius * np.sin(theta),
+                self.magnetRingDiameter / 2 * np.cos(theta),
+                self.magnetRingDiameter / 2 * np.sin(theta),
                 1,
             )
             magnetHole = (
                 self.polygonalPrism(
-                    radius=self.magnetRadius,
+                    radius=self.magnetDiameter / 2,
                     res=30,
                     height=self.magnetThickness,
                     origin=ogPoint,
@@ -1077,7 +1083,7 @@ class Generator(QRunnable):
     def generateMagneticConnectorHalf(self, origin: np.array):
         resolution = 30
         vertices = []
-        r = self.magnetRadius + self.magnetClipRingThickness
+        r = self.magnetDiameter / 2 + self.magnetClipRingThickness
         stock = np.arange(resolution)
         thetas = np.pi / resolution * stock - np.pi / 2
         x_vals = r * np.cos(thetas) + self.distanceBetweenMagnetsInClip / 2 + origin[0]
@@ -1144,7 +1150,7 @@ class Generator(QRunnable):
             )
             magnet = (
                 self.polygonalPrism(
-                    radius=self.magnetRadius,
+                    radius=self.magnetDiameter / 2,
                     res=30,
                     height=self.magnetThickness,
                     origin=magnetOrigin,
@@ -1154,7 +1160,7 @@ class Generator(QRunnable):
             )
             outerMagnet = (
                 self.polygonalPrism(
-                    radius=self.magnetRadius + self.magnetClipRingThickness,
+                    radius=self.magnetDiameter / 2 + self.magnetClipRingThickness,
                     res=30,
                     height=self.magnetThickness,
                     origin=magnetOrigin,
@@ -1250,8 +1256,8 @@ class Generator(QRunnable):
             ):
                 continue
             magOg = (
-                self.magnetRingRadius * np.cos(theta),
-                self.magnetRingRadius * np.sin(theta),
+                self.magnetRingDiameter / 2 * np.cos(theta),
+                self.magnetRingDiameter / 2 * np.sin(theta),
                 self.magnetThickness / 2,
             )
             if theta < np.pi:
@@ -1262,11 +1268,11 @@ class Generator(QRunnable):
                 proj = np.dot(magOg, anglePoint1) / anglePointMag
                 projPoint = proj * anglePoint1 / anglePointMag
                 dist = np.linalg.norm(magOg - projPoint)
-            if (dist - self.magnetRadius) < tol:
+            if (dist - self.magnetDiameter / 2) < tol:
                 continue
             magnetHole = (
                 self.polygonalPrism(
-                    radius=self.magnetRadius,
+                    radius=self.magnetDiameter / 2,
                     res=30,
                     height=self.magnetThickness,
                     origin=magOg,
@@ -1280,70 +1286,71 @@ class Generator(QRunnable):
 
     def genMountBlank(self, res):
         thetas = np.arange(res) * 2 * np.pi / res
+        mount_radius = self.mountDiameter / 2
         innerCircle = np.column_stack(
             (
-                np.cos(thetas) * self.mountRadius,
-                np.sin(thetas) * self.mountRadius,
+                np.cos(thetas) * mount_radius,
+                np.sin(thetas) * mount_radius,
                 np.full(res, 0),
             )
         )
         outerCircle = np.column_stack(
             (
-                np.cos(thetas) * (self.mountRadius + self.mountShellThickness),
-                np.sin(thetas) * (self.mountRadius + self.mountShellThickness),
+                np.cos(thetas) * (mount_radius + self.mountShellThickness),
+                np.sin(thetas) * (mount_radius + self.mountShellThickness),
                 np.full(res, 0),
             )
         )
         brimCircle = np.column_stack(
             (
                 np.cos(thetas)
-                * (self.magnetRingRadius + self.brim + self.magnetRadius),
+                * (self.magnetRingDiameter / 2 + self.brim + self.magnetDiameter / 2),
                 np.sin(thetas)
-                * (self.magnetRingRadius + self.brim + self.magnetRadius),
+                * (self.magnetRingDiameter / 2 + self.brim + self.magnetDiameter / 2),
                 np.full(res, 0),
             )
         )
         outerCircleOffset = np.column_stack(
             (
-                np.cos(thetas) * (self.mountRadius + self.mountShellThickness),
-                np.sin(thetas) * (self.mountRadius + self.mountShellThickness),
+                np.cos(thetas) * (mount_radius + self.mountShellThickness),
+                np.sin(thetas) * (mount_radius + self.mountShellThickness),
                 np.full(res, self.magnetThickness + self.mountShellThickness),
             )
         )
         brimCircleOffset = np.column_stack(
             (
                 np.cos(thetas)
-                * (self.magnetRingRadius + self.brim + self.magnetRadius),
+                * (self.magnetRingDiameter / 2 + self.brim + self.magnetDiameter / 2),
                 np.sin(thetas)
-                * (self.magnetRingRadius + self.brim + self.magnetRadius),
+                * (self.magnetRingDiameter / 2 + self.brim + self.magnetDiameter / 2),
                 np.full(res, self.magnetThickness + self.mountShellThickness),
             )
         )
         innerCircleOffset = np.column_stack(
             (
-                np.cos(thetas) * self.mountRadius,
-                np.sin(thetas) * self.mountRadius,
+                np.cos(thetas) * mount_radius,
+                np.sin(thetas) * mount_radius,
                 np.full(res, self.magnetThickness + self.mountShellThickness),
             )
         )
         topInnerCircle = np.column_stack(
             (
-                np.cos(thetas) * self.mountRadius,
-                np.sin(thetas) * self.mountRadius,
+                np.cos(thetas) * mount_radius,
+                np.sin(thetas) * mount_radius,
                 np.full(res, self.mountHeight + self.mountShellThickness),
             )
         )
         topOuterCircle = np.column_stack(
             (
-                np.cos(thetas) * (self.mountRadius + self.mountShellThickness),
-                np.sin(thetas) * (self.mountRadius + self.mountShellThickness),
+                np.cos(thetas) * (mount_radius + self.mountShellThickness),
+                np.sin(thetas) * (mount_radius + self.mountShellThickness),
                 np.full(res, self.mountHeight + self.mountShellThickness),
             )
         )
         topInnerCircleBottom = np.column_stack(
             (
-                np.cos(thetas) * self.mountRadius,
-                np.sin(thetas) * self.mountRadius,
+                np.cos(thetas) * mount_radius,
+                np.sin(thetas) * mount_radius,
                 np.full(res, self.mountHeight),
             )
         )
@@ -1753,7 +1760,7 @@ class Generator(QRunnable):
         origin = np.array((0, 0, 0))
         height = (
             4 * self.magnetClipRingThickness
-            + 2 * self.magnetRadius
+            + self.magnetDiameter
             + self.distanceBetweenMagnetsInClip
         )
         neededSlotWidth = (
@@ -1764,13 +1771,13 @@ class Generator(QRunnable):
         r = self.magnetClipRingThickness
         width = (
             self.distanceBetweenMagnetClipAndSlot
-            + self.magnetRadius * 2
+            + self.magnetDiameter
             + self.magnetClipRingThickness * 5
             + self.slotHeight * 2
             + self.slotSpacing
             + r
         )
-        base_offset = -(self.magnetRadius + self.magnetClipRingThickness * 2)
+        base_offset = -(self.magnetDiameter / 2 + self.magnetClipRingThickness * 2)
 
         baseHalfOrigin = np.array((origin[0], origin[1] + base_offset, origin[2]))
 
@@ -1814,7 +1821,7 @@ class Generator(QRunnable):
                 )
             )
             magnetHolder = self.polygonalPrism(
-                radius=self.magnetRadius
+                radius=self.magnetDiameter / 2
                 + self.magnetClipRingThickness
                 + 0.25,  # Added 0.25mm tolerance
                 res=20,
@@ -1834,7 +1841,7 @@ class Generator(QRunnable):
                 )
             )
             magnet = self.polygonalPrism(
-                radius=self.magnetRadius,  # removed the extra 0.5mm tolerance
+                radius=self.magnetDiameter / 2,  # removed the extra 0.5mm tolerance
                 res=20,
                 height=self.magnetThickness,
                 origin=magnetOrigin,
@@ -1853,7 +1860,7 @@ class Generator(QRunnable):
                     origin[0],
                     origin[1]
                     + self.distanceBetweenMagnetClipAndSlot
-                    + self.magnetRadius
+                    + self.magnetDiameter / 2
                     + self.magnetClipRingThickness
                     + self.slotHeight / 2
                     + i

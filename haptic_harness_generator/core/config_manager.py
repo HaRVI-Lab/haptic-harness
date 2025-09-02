@@ -31,44 +31,48 @@ class ConfigurationManager:
 
     # PARAMETER DEFINITIONS - Single source of truth
     PARAMETERS = {
-        "concentricPolygonRadius": ParameterDefinition(
-            name="concentricPolygonRadius",
-            display_name="Concentric Polygon Radius",
+        "concentricPolygonDiameter": ParameterDefinition(
+            name="concentricPolygonDiameter",
+            display_name="Concentric Polygon Diameter",
             ui_number=1,
             unit="mm",
-            min_value=20,
-            max_value=50,
-            default_value=30,
-            tooltip="Outer radius of the polygon tile. Determines overall size.",
-            category="Tile Parameters",
-            validation_dependencies=["tactorRadius", "magnetRingRadius", "slotWidth"],
-        ),
-        "tactorRadius": ParameterDefinition(
-            name="tactorRadius",
-            display_name="Tactor Radius",
-            ui_number=2,
-            unit="mm",
-            min_value=5,
-            max_value=20,
-            default_value=10,
-            tooltip="Radius of the tactor cavity. Must be smaller than (magnetRingRadius - magnetRadius - 2mm)",
-            category="Tile Parameters",
-            validation_dependencies=["magnetRingRadius", "magnetRadius"],
-        ),
-        "magnetRingRadius": ParameterDefinition(
-            name="magnetRingRadius",
-            display_name="Magnet Ring Radius",
-            ui_number=3,
-            unit="mm",
-            min_value=15,
-            max_value=35,
-            default_value=20,
-            tooltip="Distance from center to magnet positions",
+            min_value=20 * 2,
+            max_value=50 * 2,
+            default_value=30 * 2,
+            tooltip="Outer diameter of the polygon tile. Determines overall size.",
             category="Tile Parameters",
             validation_dependencies=[
-                "tactorRadius",
-                "magnetRadius",
-                "concentricPolygonRadius",
+                "tactorDiameter",
+                "magnetRingDiameter",
+                "slotWidth",
+            ],
+        ),
+        "tactorDiameter": ParameterDefinition(
+            name="tactorDiameter",
+            display_name="Tactor Diameter",
+            ui_number=2,
+            unit="mm",
+            min_value=5 * 2,
+            max_value=20 * 2,
+            default_value=10 * 2,
+            tooltip="Diameter of the tactor cavity. Must be smaller than (magnetRingDiameter - magnetDiameter - 4mm)",
+            category="Tile Parameters",
+            validation_dependencies=["magnetRingDiameter", "magnetDiameter"],
+        ),
+        "magnetRingDiameter": ParameterDefinition(
+            name="magnetRingDiameter",
+            display_name="Magnet Ring Diameter",
+            ui_number=3,
+            unit="mm",
+            min_value=15 * 2,
+            max_value=35 * 2,
+            default_value=20 * 2,
+            tooltip="Diameter of magnet positions",
+            category="Tile Parameters",
+            validation_dependencies=[
+                "tactorDiameter",
+                "magnetDiameter",
+                "concentricPolygonDiameter",
             ],
         ),
         "numSides": ParameterDefinition(
@@ -81,7 +85,7 @@ class ConfigurationManager:
             default_value=6,
             tooltip="Polygon sides (3-8). 4 or 6 recommended for wrist mounting.",
             category="Tile Parameters",
-            validation_dependencies=["concentricPolygonRadius", "slotWidth"],
+            validation_dependencies=["concentricPolygonDiameter", "slotWidth"],
         ),
         "foamThickness": ParameterDefinition(
             name="foamThickness",
@@ -105,7 +109,7 @@ class ConfigurationManager:
             default_value=3,
             tooltip="Distance from magnet clip to polygon edge",
             category="Tile Parameters",
-            validation_dependencies=["concentricPolygonRadius", "magnetRadius"],
+            validation_dependencies=["concentricPolygonDiameter", "magnetDiameter"],
         ),
         "numMagnetsInRing": ParameterDefinition(
             name="numMagnetsInRing",
@@ -117,19 +121,19 @@ class ConfigurationManager:
             default_value=6,
             tooltip="Number of magnets arranged in a ring",
             category="Tile Parameters",
-            validation_dependencies=["magnetRingRadius", "magnetRadius"],
+            validation_dependencies=["magnetRingDiameter", "magnetDiameter"],
         ),
-        "magnetRadius": ParameterDefinition(
-            name="magnetRadius",
-            display_name="Magnet Radius",
+        "magnetDiameter": ParameterDefinition(
+            name="magnetDiameter",
+            display_name="Magnet Diameter",
             ui_number=5,
             unit="mm",
-            min_value=1,
-            max_value=10,
-            default_value=5,
-            tooltip="Radius of individual magnets",
+            min_value=1 * 2,
+            max_value=10 * 2,
+            default_value=5 * 2,
+            tooltip="Diameter of individual magnets",
             category="Magnet Parameters",
-            validation_dependencies=["magnetRingRadius", "tactorRadius"],
+            validation_dependencies=["magnetRingDiameter", "tactorDiameter"],
         ),
         "magnetThickness": ParameterDefinition(
             name="magnetThickness",
@@ -154,7 +158,7 @@ class ConfigurationManager:
             tooltip="Width of the slot in the clip",
             category="Clip Parameters",
             validation_dependencies=[
-                "concentricPolygonRadius",
+                "concentricPolygonDiameter",
                 "numSides",
                 "slotBorderRadius",
             ],
@@ -181,7 +185,7 @@ class ConfigurationManager:
             default_value=10,
             tooltip="Radius of the slot border for rounded corners",
             category="Clip Parameters",
-            validation_dependencies=["slotWidth", "concentricPolygonRadius"],
+            validation_dependencies=["slotWidth", "concentricPolygonDiameter"],
         ),
         "magnetClipThickness": ParameterDefinition(
             name="magnetClipThickness",
@@ -217,7 +221,7 @@ class ConfigurationManager:
             default_value=15,
             tooltip="Distance between magnets in the clip",
             category="Clip Parameters",
-            validation_dependencies=["magnetRadius"],
+            validation_dependencies=["magnetDiameter"],
         ),
         "distanceBetweenMagnetClipAndSlot": ParameterDefinition(
             name="distanceBetweenMagnetClipAndSlot",
@@ -231,17 +235,17 @@ class ConfigurationManager:
             category="Clip Parameters",
             validation_dependencies=[],
         ),
-        "mountRadius": ParameterDefinition(
-            name="mountRadius",
-            display_name="Mount Radius",
+        "mountDiameter": ParameterDefinition(
+            name="mountDiameter",
+            display_name="Mount Diameter",
             ui_number=14,
             unit="mm",
-            min_value=5,
-            max_value=20,
-            default_value=13,
-            tooltip="Radius of the mount component",
+            min_value=5 * 2,
+            max_value=20 * 2,
+            default_value=13 * 2,
+            tooltip="Diameter of the mount component",
             category="Mount Parameters",
-            validation_dependencies=["magnetRingRadius", "magnetRadius"],
+            validation_dependencies=["magnetRingDiameter", "magnetDiameter"],
         ),
         "mountHeight": ParameterDefinition(
             name="mountHeight",
@@ -392,14 +396,14 @@ class ConfigurationManager:
     # VALIDATED PRESET CONFIGURATIONS
     PRESETS = {
         "Standard 4-sided": {
-            "concentricPolygonRadius": 32,
-            "tactorRadius": 12.7,
-            "magnetRingRadius": 22,
+            "concentricPolygonDiameter": 32 * 2,
+            "tactorDiameter": 12.7 * 2,
+            "magnetRingDiameter": 22 * 2,
             "numSides": 4,
             "foamThickness": 2,
             "distanceBetweenMagnetClipAndPolygonEdge": 4,
             "numMagnetsInRing": 6,
-            "magnetRadius": 2.5,
+            "magnetDiameter": 2.5 * 2,
             "magnetThickness": 1.8,
             "slotWidth": 25,  # Reduced for safety
             "slotHeight": 1.5,
@@ -408,7 +412,7 @@ class ConfigurationManager:
             "magnetClipRingThickness": 1.5,
             "distanceBetweenMagnetsInClip": 15,
             "distanceBetweenMagnetClipAndSlot": 4,
-            "mountRadius": 12,
+            "mountDiameter": 12 * 2,
             "mountHeight": 10,
             "mountShellThickness": 2,
             "mountBottomAngleOpening": 60,
@@ -423,14 +427,14 @@ class ConfigurationManager:
             "slotSpacing": 2,
         },
         "Compact 4-sided": {
-            "concentricPolygonRadius": 28,
-            "tactorRadius": 10,
-            "magnetRingRadius": 20,
+            "concentricPolygonDiameter": 28 * 2,
+            "tactorDiameter": 10 * 2,
+            "magnetRingDiameter": 20 * 2,
             "numSides": 4,
             "foamThickness": 2,
             "distanceBetweenMagnetClipAndPolygonEdge": 3,
             "numMagnetsInRing": 6,
-            "magnetRadius": 2.5,
+            "magnetDiameter": 2.5 * 2,
             "magnetThickness": 1.8,
             "slotWidth": 22,  # Adjusted for compact design
             "slotHeight": 1.5,
@@ -439,7 +443,7 @@ class ConfigurationManager:
             "magnetClipRingThickness": 1.5,
             "distanceBetweenMagnetsInClip": 15,
             "distanceBetweenMagnetClipAndSlot": 3,
-            "mountRadius": 11,
+            "mountDiameter": 11 * 2,
             "mountHeight": 10,
             "mountShellThickness": 2,
             "mountBottomAngleOpening": 60,
@@ -455,14 +459,14 @@ class ConfigurationManager:
         },
         "Standard 6-sided": {
             # Use exact values from working configuration
-            "concentricPolygonRadius": 30,
-            "tactorRadius": 10,
-            "magnetRingRadius": 20,
+            "concentricPolygonDiameter": 30 * 2,
+            "tactorDiameter": 10 * 2,
+            "magnetRingDiameter": 20 * 2,
             "numSides": 6,
             "foamThickness": 1,
             "distanceBetweenMagnetClipAndPolygonEdge": 3,
             "numMagnetsInRing": 6,
-            "magnetRadius": 5,
+            "magnetDiameter": 5 * 2,
             "magnetThickness": 1,
             "slotWidth": 26,  # Adjusted for 6 sides
             "slotHeight": 1.5,
@@ -471,7 +475,7 @@ class ConfigurationManager:
             "magnetClipRingThickness": 1.5,
             "distanceBetweenMagnetsInClip": 15,
             "distanceBetweenMagnetClipAndSlot": 3,
-            "mountRadius": 12,
+            "mountDiameter": 12 * 2,
             "mountHeight": 10,
             "mountShellThickness": 2,
             "mountBottomAngleOpening": 60,
@@ -534,12 +538,12 @@ class ConfigurationManager:
 
         # Extract values with defaults
         numSides = config.get("numSides", 6)
-        concentricPolygonRadius = config.get("concentricPolygonRadius", 30)
+        concentricPolygonDiameter = config.get("concentricPolygonDiameter", 30 * 2)
         slotWidth = config.get("slotWidth", 26)
         slotBorderRadius = config.get("slotBorderRadius", 10)
-        tactorRadius = config.get("tactorRadius", 10)
-        magnetRadius = config.get("magnetRadius", 5)
-        magnetRingRadius = config.get("magnetRingRadius", 20)
+        tactorDiameter = config.get("tactorDiameter", 10 * 2)
+        magnetDiameter = config.get("magnetDiameter", 5 * 2)
+        magnetRingDiameter = config.get("magnetRingDiameter", 20 * 2)
         distanceBetweenMagnetsInClip = config.get("distanceBetweenMagnetsInClip", 15)
         distanceBetweenMagnetClipAndPolygonEdge = config.get(
             "distanceBetweenMagnetClipAndPolygonEdge", 3
@@ -555,11 +559,11 @@ class ConfigurationManager:
         mountShellThickness = config.get("mountShellThickness", 2)
 
         # Critical validation 1: Polygon edge vs slot width
-        polygon_edge = 2 * concentricPolygonRadius * np.tan(np.pi / numSides)
+        polygon_edge = concentricPolygonDiameter * np.tan(np.pi / numSides)
         if slotWidth + 2 * tolerance > polygon_edge:
             safe_slot_width = polygon_edge - 2 * tolerance
-            safe_polygon_radius = (slotWidth + 2 * tolerance) / (
-                2 * np.tan(np.pi / numSides)
+            safe_polygon_diameter = (slotWidth + 2 * tolerance) / (
+                np.tan(np.pi / numSides)
             )
             errors.append(
                 f"Slot too wide for polygon:\n"
@@ -567,16 +571,17 @@ class ConfigurationManager:
                 f"  Polygon edge = {polygon_edge:.1f}mm\n"
                 f"  Options:\n"
                 f"    • Reduce {cls.get_parameter_display('slotWidth')} to < {safe_slot_width:.0f}mm\n"
-                f"    • Increase {cls.get_parameter_display('concentricPolygonRadius')} to > {safe_polygon_radius:.0f}mm"
+                f"    • Increase {cls.get_parameter_display('concentricPolygonDiameter')} to > {safe_polygon_diameter:.0f}mm"
             )
-            params.extend(["slotWidth", "concentricPolygonRadius", "numSides"])
+            params.extend(["slotWidth", "concentricPolygonDiameter", "numSides"])
 
         # Critical validation 2: Flap intersection check
+        # WARNING: check this because concentricPolygonDiameter is not actually used
         if polygon_edge > 0:
             x = (polygon_edge - slotWidth) / 2
             y = (
                 distanceBetweenMagnetClipAndPolygonEdge
-                + 2 * (magnetRadius + magnetClipRingThickness)
+                + 2 * (magnetDiameter / 2 + magnetClipRingThickness)
                 + distanceBetweenMagnetClipAndSlot
                 + slotHeight / 2
             )
@@ -595,48 +600,52 @@ class ConfigurationManager:
                         f"  Options:\n"
                         f"    • Reduce {cls.get_parameter_display('slotWidth')} (current: {slotWidth}mm)\n"
                         f"    • Reduce {cls.get_parameter_display('slotBorderRadius')} (current: {slotBorderRadius}mm)\n"
-                        f"    • Increase {cls.get_parameter_display('concentricPolygonRadius')} (current: {concentricPolygonRadius}mm)"
+                        f"    • Increase {cls.get_parameter_display('concentricPolygonDiameter')} (current: {concentricPolygonDiameter}mm)"
                     )
                     params.extend(
-                        ["slotWidth", "slotBorderRadius", "concentricPolygonRadius"]
+                        ["slotWidth", "slotBorderRadius", "concentricPolygonDiameter"]
                     )
 
         # Critical validation 3: Tactor vs magnet clearance
         max_tactor_reach = (
-            tactorRadius if numSides == 2 else tactorRadius / np.cos(np.pi / numSides)
+            tactorDiameter
+            if numSides == 2
+            else (tactorDiameter) / np.cos(np.pi / numSides)
         )
-        if max_tactor_reach + tolerance > magnetRingRadius - magnetRadius:
-            safe_tactor = (magnetRingRadius - magnetRadius - tolerance) * np.cos(
-                np.pi / numSides
-            )
-            safe_ring = max_tactor_reach + magnetRadius + tolerance
+        if max_tactor_reach + 2 * tolerance > magnetRingDiameter - magnetDiameter:
+            safe_tactor = (
+                magnetRingDiameter - magnetDiameter - 2 * tolerance
+            ) * np.cos(np.pi / numSides)
+            safe_ring = max_tactor_reach + magnetDiameter + 2 * tolerance
             errors.append(
                 f"Tactor-magnet interference:\n"
                 f"  Options:\n"
-                f"    • Reduce {cls.get_parameter_display('tactorRadius')} to < {safe_tactor:.1f}mm\n"
-                f"    • Increase {cls.get_parameter_display('magnetRingRadius')} to > {safe_ring:.0f}mm"
+                f"    • Reduce {cls.get_parameter_display('tactorDiameter')} to < {safe_tactor:.1f}mm\n"
+                f"    • Increase {cls.get_parameter_display('magnetRingDiameter')} to > {safe_ring:.0f}mm"
             )
-            params.extend(["tactorRadius", "magnetRingRadius", "magnetRadius"])
+            params.extend(["tactorDiameter", "magnetRingDiameter", "magnetDiameter"])
 
         # Critical validation 4: Magnets don't overlap
         halfAngleBetweenMagnets = np.pi / numMagnetsInRing
-        halfDistBetweenMagnets = magnetRingRadius * np.sin(halfAngleBetweenMagnets)
-        if magnetRadius > halfDistBetweenMagnets - tolerance:
-            safe_mag_radius = halfDistBetweenMagnets - tolerance
-            safe_ring_radius = (magnetRadius + tolerance) / np.sin(
+        halfDistBetweenMagnets = (magnetRingDiameter / 2) * np.sin(
+            halfAngleBetweenMagnets
+        )
+        if magnetDiameter / 2 > halfDistBetweenMagnets - tolerance:
+            safe_mag_diameter = (halfDistBetweenMagnets - tolerance) * 2
+            safe_ring_diameter = (magnetDiameter + 2 * tolerance) / np.sin(
                 halfAngleBetweenMagnets
             )
             safe_num_magnets = np.pi / np.arcsin(
-                (magnetRadius + tolerance) / magnetRingRadius
+                (magnetDiameter / 2 + tolerance) / (magnetRingDiameter / 2)
             )
             errors.append(
                 f"Magnet ring interference:\n"
                 f"  Options:\n"
                 f"    • Reduce {cls.get_parameter_display('numMagnetsInRing')} to < {safe_num_magnets:.0f}\n"
-                f"    • Reduce {cls.get_parameter_display('magnetRadius')} to < {safe_mag_radius:.1f}mm\n"
-                f"    • Increase {cls.get_parameter_display('magnetRingRadius')} to > {safe_ring_radius:.1f}mm"
+                f"    • Reduce {cls.get_parameter_display('magnetDiameter')} to < {safe_mag_diameter:.1f}mm\n"
+                f"    • Increase {cls.get_parameter_display('magnetRingDiameter')} to > {safe_ring_diameter:.1f}mm"
             )
-            params.extend(["magnetRingRadius", "magnetRadius", "numMagnetsInRing"])
+            params.extend(["magnetRingDiameter", "magnetDiameter", "numMagnetsInRing"])
 
         # Critical validation 5: mount height > magnet thickness
         if mountHeight < magnetThickness + mountShellThickness + tolerance:

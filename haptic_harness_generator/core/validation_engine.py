@@ -74,9 +74,9 @@ class ValidationEngine:
         # Check for critical missing parameters
         critical_params = [
             "numSides",
-            "concentricPolygonRadius",
-            "tactorRadius",
-            "magnetRingRadius",
+            "concentricPolygonDiameter",
+            "tactorDiameter",
+            "magnetRingDiameter",
         ]
         missing_critical = [p for p in critical_params if p not in config]
         if missing_critical:
@@ -110,22 +110,12 @@ class ValidationEngine:
         """Detailed geometric validation"""
         # Extract values with defaults
         numSides = config.get("numSides", 6)
-        concentricPolygonRadius = config.get("concentricPolygonRadius", 30)
-        slotWidth = config.get("slotWidth", 26)
-        slotBorderRadius = config.get("slotBorderRadius", 10)
-        tactorRadius = config.get("tactorRadius", 10)
-        magnetRadius = config.get("magnetRadius", 5)
-        magnetRingRadius = config.get("magnetRingRadius", 20)
+        concentricPolygonDiameter = config.get("concentricPolygonDiameter", 30 * 2)
+        tactorDiameter = config.get("tactorDiameter", 10 * 2)
+        magnetDiameter = config.get("magnetDiameter", 5 * 2)
+        magnetRingDiameter = config.get("magnetRingDiameter", 20 * 2)
         distanceBetweenMagnetsInClip = config.get("distanceBetweenMagnetsInClip", 15)
-        distanceBetweenMagnetClipAndPolygonEdge = config.get(
-            "distanceBetweenMagnetClipAndPolygonEdge", 3
-        )
-        distanceBetweenMagnetClipAndSlot = config.get(
-            "distanceBetweenMagnetClipAndSlot", 3
-        )
-        slotHeight = config.get("slotHeight", 1.5)
-        magnetClipRingThickness = config.get("magnetClipRingThickness", 1.5)
-        mountRadius = config.get("mountRadius", 13)
+        mountDiameter = config.get("mountDiameter", 13 * 2)
         mountBottomAngleOpening = config.get("mountBottomAngleOpening", 60)
         mountTopAngleOpening = config.get("mountTopAngleOpening", 45)
         strapClipRadius = config.get("strapClipRadius", 1)
@@ -141,24 +131,24 @@ class ValidationEngine:
             self.affected_params.add("numSides")
 
         # Validation 2: Tactor vs polygon radius
-        if tactorRadius >= concentricPolygonRadius:
+        if tactorDiameter >= concentricPolygonDiameter:
             self.critical_errors.append(
-                f"{ConfigurationManager.get_parameter_display('tactorRadius')} "
-                f"({tactorRadius}mm) must be smaller than "
-                f"{ConfigurationManager.get_parameter_display('concentricPolygonRadius')} "
-                f"({concentricPolygonRadius}mm)"
+                f"{ConfigurationManager.get_parameter_display('tactorDiameter')} "
+                f"({tactorDiameter}mm) must be smaller than "
+                f"{ConfigurationManager.get_parameter_display('concentricPolygonDiameter')} "
+                f"({concentricPolygonDiameter}mm)"
             )
-            self.affected_params.update(["tactorRadius", "concentricPolygonRadius"])
+            self.affected_params.update(["tactorDiameter", "concentricPolygonDiameter"])
 
-        # Validation 3: Mount radius vs magnet configuration
-        if mountRadius > magnetRingRadius - magnetRadius - self.tolerance:
-            max_mount = magnetRingRadius - magnetRadius - self.tolerance
+        # Validation 3: Mount diameter vs magnet configuration
+        if mountDiameter > magnetRingDiameter - magnetDiameter - 2 * self.tolerance:
+            max_mount = magnetRingDiameter - magnetDiameter - 2 * self.tolerance
             self.critical_errors.append(
-                f"{ConfigurationManager.get_parameter_display('mountRadius')} "
-                f"({mountRadius}mm) too large. Maximum: {max_mount:.1f}mm"
+                f"{ConfigurationManager.get_parameter_display('mountDiameter')} "
+                f"({mountDiameter}mm) too large. Maximum: {max_mount:.1f}mm"
             )
             self.affected_params.update(
-                ["mountRadius", "magnetRingRadius", "magnetRadius"]
+                ["mountDiameter", "magnetRingDiameter", "magnetDiameter"]
             )
 
         # Validation 4: Angle constraints
@@ -177,20 +167,20 @@ class ValidationEngine:
             self.affected_params.add("mountTopAngleOpening")
 
         # Validation 5: Magnet spacing
-        if distanceBetweenMagnetsInClip < 2 * magnetRadius + self.tolerance:
-            min_distance = 2 * magnetRadius + self.tolerance
+        if distanceBetweenMagnetsInClip < magnetDiameter + self.tolerance:
+            min_distance = magnetDiameter + self.tolerance
             self.critical_errors.append(
                 f"{ConfigurationManager.get_parameter_display('distanceBetweenMagnetsInClip')} "
                 f"({distanceBetweenMagnetsInClip}mm) too small. Minimum: {min_distance:.1f}mm"
             )
             self.affected_params.update(
-                ["distanceBetweenMagnetsInClip", "magnetRadius"]
+                ["distanceBetweenMagnetsInClip", "magnetDiameter"]
             )
 
         # Validation 6: Polygon edge vs magnet configuration
-        polygon_edge = 2 * concentricPolygonRadius * np.tan(np.pi / numSides)
+        polygon_edge = concentricPolygonDiameter * np.tan(np.pi / numSides)
         min_edge_for_magnets = (
-            2 * magnetRadius + 2 * self.tolerance + distanceBetweenMagnetsInClip
+            magnetDiameter + 2 * self.tolerance + distanceBetweenMagnetsInClip
         )
         if polygon_edge < min_edge_for_magnets:
             self.critical_errors.append(
@@ -199,9 +189,9 @@ class ValidationEngine:
             )
             self.affected_params.update(
                 [
-                    "concentricPolygonRadius",
+                    "concentricPolygonDiameter",
                     "numSides",
-                    "magnetRadius",
+                    "magnetDiameter",
                     "distanceBetweenMagnetsInClip",
                 ]
             )
@@ -303,54 +293,61 @@ class ValidationEngine:
         # Analyze error patterns and provide specific fixes
         if (
             "slotWidth" in self.affected_params
-            and "concentricPolygonRadius" in self.affected_params
+            and "concentricPolygonDiameter" in self.affected_params
         ):
             numSides = config.get("numSides", 6)
             current_slot = config.get("slotWidth", 26)
-            current_radius = config.get("concentricPolygonRadius", 30)
+            current_diameter = config.get("concentricPolygonDiameter", 30 * 2)
 
             # Calculate safe values with tolerance and safety margin
             theoretical_slot = (
-                2 * current_radius * np.tan(np.pi / numSides) - 2 * self.tolerance
+                current_diameter * np.tan(np.pi / numSides) - 2 * self.tolerance
             )
-            theoretical_radius = (current_slot + 2 * self.tolerance) / (
-                2 * np.tan(np.pi / numSides)
+            theoretical_diameter = (current_slot + 2 * self.tolerance) / (
+                np.tan(np.pi / numSides)
             )
 
             safe_slot = self._calculate_safe_value(theoretical_slot, "dimension")
-            safe_radius = self._calculate_safe_value(theoretical_radius, "dimension")
+            safe_diameter = self._calculate_safe_value(
+                theoretical_diameter, "dimension"
+            )
 
             suggestions.append(
                 f"Quick fix options:\n"
                 f"  1. Set {ConfigurationManager.get_parameter_display('slotWidth')} → {safe_slot:.2f}mm\n"
-                f"  2. Set {ConfigurationManager.get_parameter_display('concentricPolygonRadius')} → {safe_radius:.2f}mm"
+                f"  2. Set {ConfigurationManager.get_parameter_display('concentricPolygonDiameter')} → {safe_diameter:.2f}mm"
             )
 
         if (
-            "tactorRadius" in self.affected_params
-            and "magnetRingRadius" in self.affected_params
+            "tactorDiameter" in self.affected_params
+            and "magnetRingDiameter" in self.affected_params
         ):
-            magnetRadius = config.get("magnetRadius", 5)
-            magnetRingRadius = config.get("magnetRingRadius", 20)
+            magnetDiameter = config.get("magnetDiameter", 5 * 2)
+            magnetRingDiameter = config.get("magnetRingDiameter", 20 * 2)
             numSides = config.get("numSides", 6)
 
             theoretical_tactor = (
-                (magnetRingRadius - magnetRadius - self.tolerance)
-                * np.cos(np.pi / numSides)
+                (
+                    (magnetRingDiameter / 2 - magnetDiameter / 2 - self.tolerance)
+                    * np.cos(np.pi / numSides)
+                )
+                * 2
                 if numSides > 2
-                else magnetRingRadius - magnetRadius - self.tolerance
+                else (magnetRingDiameter / 2 - magnetDiameter / 2 - self.tolerance) * 2
             )
             theoretical_ring = (
-                config.get("tactorRadius", 10) + magnetRadius + self.tolerance
-            )
+                config.get("tactorDiameter", 10) / 2
+                + magnetDiameter / 2
+                + self.tolerance
+            ) * 2
 
             safe_tactor = self._calculate_safe_value(theoretical_tactor, "dimension")
             safe_ring = self._calculate_safe_value(theoretical_ring, "dimension")
 
             suggestions.append(
                 f"Tactor-magnet clearance fix:\n"
-                f"  1. Set {ConfigurationManager.get_parameter_display('tactorRadius')} → {safe_tactor:.2f}mm\n"
-                f"  2. Set {ConfigurationManager.get_parameter_display('magnetRingRadius')} → {safe_ring:.2f}mm"
+                f"  1. Set {ConfigurationManager.get_parameter_display('tactorDiameter')} → {safe_tactor:.2f}mm\n"
+                f"  2. Set {ConfigurationManager.get_parameter_display('magnetRingDiameter')} → {safe_ring:.2f}mm"
             )
 
         return suggestions
