@@ -655,53 +655,54 @@ class ConfigurationManager:
             errors.append(
                 f"Mount height too short for magnetthickness and mountShellThickness:\n"
                 f"  Options:\n"
-                f"    • Increase {cls.get_parameter_display('mountHeight')} to > {safe_mount_height:.0f}\n"
-                f"    • Reduce {cls.get_parameter_display('magnetThickness')} to < {safe_magnet_thickness:.0f}\n"
-                f"    • Reduce {cls.get_parameter_display('mountShellThickness')} to < {safe_mount_shell_thickness:.0f}\n"
+                f"    • Increase {cls.get_parameter_display('mountHeight')} to > {safe_mount_height:.1f}\n"
+                f"    • Reduce {cls.get_parameter_display('magnetThickness')} to < {safe_magnet_thickness:.1f}\n"
+                f"    • Reduce {cls.get_parameter_display('mountShellThickness')} to < {safe_mount_shell_thickness:.1f}\n"
             )
             params.extend(["mountHeight", "magnetThickness", "mountShellThickness"])
 
         # Critical validation 6: agnetClipRingThickness + magnetRadius don't extend past the tile flaps
 
         polygon_edge = concentricPolygonDiameter * np.tan(np.pi / numSides)
+        more_tolerance = tolerance * 4
         if (
             distanceBetweenMagnetsInClip
             + magnetDiameter
             + 2 * magnetClipRingThickness
-            + 2 * tolerance
+            + more_tolerance
             > polygon_edge
         ):
             safe_polygon_diameter = (
                 distanceBetweenMagnetsInClip
                 + magnetDiameter
                 + 2 * magnetClipRingThickness
-                + 2 * tolerance
+                + more_tolerance
             ) / np.tan(np.pi / numSides)
             safe_distance_between_magnets = (
                 polygon_edge
                 - magnetDiameter
                 - 2 * magnetClipRingThickness
-                - 2 * tolerance
+                - more_tolerance
             )
             safe_magnet_diameter = (
                 polygon_edge
                 - distanceBetweenMagnetsInClip
                 - 2 * magnetClipRingThickness
-                - 2 * tolerance
+                - more_tolerance
             )
             safe_magnet_clip_ring = (
                 polygon_edge
                 - distanceBetweenMagnetsInClip
                 - magnetDiameter
-                - 2 * tolerance
+                - more_tolerance
             ) / 2
             errors.append(
                 f"The clip extends past the edges of the tile flaps:\n"
                 f"  Options:\n"
-                f"    • Increase {cls.get_parameter_display('concentricPolygonDiameter')} to > {safe_polygon_diameter:.0f}\n"
-                f"    • Reduce {cls.get_parameter_display('distanceBetweenMagnetsInClip')} to < {safe_distance_between_magnets:.0f}\n"
-                f"    • Reduce {cls.get_parameter_display('magnetDiameter')} to < {safe_magnet_diameter:.0f}\n"
-                f"    • Reduce {cls.get_parameter_display('magnetClipRingThickness')} to < {safe_magnet_clip_ring:.0f}\n"
+                f"    • Increase {cls.get_parameter_display('concentricPolygonDiameter')} to > {safe_polygon_diameter:.1f}\n"
+                f"    • Reduce {cls.get_parameter_display('distanceBetweenMagnetsInClip')} to < {safe_distance_between_magnets:.1f}\n"
+                f"    • Reduce {cls.get_parameter_display('magnetDiameter')} to < {safe_magnet_diameter:.1f}\n"
+                f"    • Reduce {cls.get_parameter_display('magnetClipRingThickness')} to < {safe_magnet_clip_ring:.1f}\n"
             )
             params.extend(
                 [
