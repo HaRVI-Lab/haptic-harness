@@ -648,13 +648,14 @@ class Generator(QRunnable):
         lines = np.array(self.genTyvekTileFlap()).reshape(-1, 2).T
         new_len = lines.shape[1]
         zeros = np.zeros(new_len).reshape((-1, 1))
+        theta_offset = np.pi / self.numSides - np.pi / 2
         for i in range(self.numSides):
             offset = len(pvVerts)
-            theta = 2 * np.pi / self.numSides * i
+            theta = 2 * np.pi / self.numSides * i + theta_offset
             lines_copy = lines.copy()
             rotationalMatrix = np.matrix(
                 np.array(
-                    [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
+                    [[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]
                 )
             )
             product = rotationalMatrix * lines_copy
@@ -665,6 +666,18 @@ class Generator(QRunnable):
             pvLines.extend(new_lines)
             for k in range(0, new_len, 2):
                 msp.add_line(new_verts[k].tolist()[0], new_verts[k + 1].tolist()[0])
+
+            # pl = pv.Plotter()
+            # pl.add_points(
+            #     np.array(pvVerts),
+            #     color="crimson",
+            #     point_size=12,
+            #     render_points_as_spheres=True,
+            #     label="verts",
+            # )
+            # pl.show_bounds(location="all")
+            # pl.add_legend()
+            # pl.show()
         zoom.extents(msp)
         doc.saveas(f"{self.userDir}/tyvekTile.dxf")
 
@@ -685,10 +698,6 @@ class Generator(QRunnable):
     def genOuterPolygon(self, msp, pvVerts, pvLines):
         theta = 2 * np.pi / self.numSides
         polygonSideHalf = self.concentricPolygonDiameter / 2 * np.tan(theta / 2)
-        # ogPair = (
-        #     [polygonSideHalf, self.concentricPolygonDiameter / 2],
-        #     [-1 * polygonSideHalf, self.concentricPolygonDiameter / 2],
-        # )
         ogPair = (
             [self.concentricPolygonDiameter / 2, polygonSideHalf],
             [self.concentricPolygonDiameter / 2, -polygonSideHalf],
