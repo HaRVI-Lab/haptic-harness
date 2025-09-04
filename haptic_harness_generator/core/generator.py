@@ -685,14 +685,20 @@ class Generator(QRunnable):
     def genOuterPolygon(self, msp, pvVerts, pvLines):
         theta = 2 * np.pi / self.numSides
         polygonSideHalf = self.concentricPolygonDiameter / 2 * np.tan(theta / 2)
+        # ogPair = (
+        #     [polygonSideHalf, self.concentricPolygonDiameter / 2],
+        #     [-1 * polygonSideHalf, self.concentricPolygonDiameter / 2],
+        # )
         ogPair = (
-            [polygonSideHalf, self.concentricPolygonDiameter / 2],
-            [-1 * polygonSideHalf, self.concentricPolygonDiameter / 2],
+            [self.concentricPolygonDiameter / 2, polygonSideHalf],
+            [self.concentricPolygonDiameter / 2, -polygonSideHalf],
         )
+        theta_offset = np.pi / self.numSides
+
         for i in range(self.numSides):
-            theta = 2 * np.pi / self.numSides * i
+            theta = 2 * np.pi / self.numSides * i + theta_offset
             rotationalMatrix = np.matrix(
-                [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
+                [[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]
             )
             v1 = rotationalMatrix * np.array(ogPair[0]).reshape((-1, 1))
             v2 = rotationalMatrix * np.array(ogPair[1]).reshape((-1, 1))
@@ -710,6 +716,7 @@ class Generator(QRunnable):
         msp = doc.modelspace()
         pvVerts, pvLines = self.genCenter(msp)
         pvVerts, pvLines = self.genOuterPolygon(msp, pvVerts, pvLines)
+
         zoom.extents(msp)
         doc.saveas(f"{self.userDir}/foamPiece.dxf")
         backend = svg.SVGBackend()
@@ -905,6 +912,7 @@ class Generator(QRunnable):
         pvVerts, pvLines = self.genCenter(msp)
         pvVerts, pvLines = self.genOuterPolygon(msp, pvVerts, pvLines)
         pvVerts, pvLines = self.genMagnetHoles(msp, pvVerts, pvLines)
+
         zoom.extents(msp)
         doc.saveas(f"{self.userDir}/magnetRing.dxf")
         backend = svg.SVGBackend()
@@ -1034,6 +1042,7 @@ class Generator(QRunnable):
             .subdivide(nsub=2)
             .compute_normals()
         )
+
         for i in range(self.numMagnetsInRing):
             theta = 2 * np.pi / self.numMagnetsInRing * i
             ogPoint = (
