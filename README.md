@@ -81,6 +81,13 @@ If installation fails:
     <img src = "haptic_harness_generator/assets/diagramOne.jpg" alt = "Diagram view" width="50%">
 </p>
 
+### Tile Assembly Video
+<p align="center">
+ <a href="https://www.youtube.com/watch?v=wtgQh-pIwVk"> 
+  <img src = "https://img.youtube.com/vi/wtgQh-pIwVk/0.jpg" alt = "Assembly Video" width="50%"> 
+ </a>
+</p>
+
 ## Dependencies:
 -   Pyvista
 -   vtkbool=3.0.1 (pinned version for compatibility)
@@ -89,6 +96,7 @@ If installation fails:
 -   Numpy
 -   PyQT5
 -   pyvistaqt
+
 
 # Citations for Haptic Harness Generator
 ## APA Format
